@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "skills": {
+    "esp-idf": {
+      "source": "pedrominatel/awesome-esp-ai",
+      "sourceType": "github",
+      "skillPath": "skills/esp-idf/SKILL.md",
+      "computedHash": "cb4fcf5913cb19d2ff804286817ec995aae678395a54589c8d478168f57682dc"
+    },
+    "esp-idf-components": {
+      "source": "pedrominatel/awesome-esp-ai",
+      "sourceType": "github",
+      "skillPath": "skills/esp-idf-components/SKILL.md",
+      "computedHash": "f7c21858359de71b825fa17b568f616d6cc5c4e5eaf3031a2de6f62e4c57d020"
+    },
+    "esp32-firmware-engineer": {
+      "source": "adamlipecz/esp32-firmware-engineer-skill",
+      "sourceType": "github",
+      "skillPath": "esp32-firmware-engineer/SKILL.md",
+      "computedHash": "3df8fc9d1ba783e4f09c59cf728cfb73cecfca89eece4a3b5b7d7e3e62068b6e"
+    }
+  }
+}
