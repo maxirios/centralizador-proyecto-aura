@@ -1,0 +1,15 @@
+menu "Wi-Fi Configuration"
+
+    config ROUTER_SSID
+        string "Router SSID"
+        default "hotspot"
+        help
+            SSID del router Wi-Fi al que se conectara el nodo Root.
+
+    config ROUTER_PASS
+        string "Router Password"
+        default "password"
+        help
+            Contrasena del router Wi-Fi.
+
+endmenu

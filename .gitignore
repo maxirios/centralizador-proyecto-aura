@@ -1,0 +1,18 @@
+# ESP-IDF build directory
+build*/
+
+# SDK config generated files
+sdkconfig
+sdkconfig.*
+!sdkconfig.defaults
+
+# Local configuration overrides (.local, .esp32s3, .esp32c6, etc.)
+sdkconfig.defaults.*
+
+# Component manager
+dependencies.lock
+managed_components/
+
+# Editor and language server configuration
+.vscode/
+.clangd

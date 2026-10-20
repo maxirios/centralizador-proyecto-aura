@@ -4,19 +4,20 @@
 #include "esp_netif.h"
 #include "esp_event.h"
 #include "esp_mesh.h"
+#include "esp_mac.h"
 #include "nvs_flash.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-#define ROUTER_SSID "hotspot"
-#define ROUTER_PASS "password"
+#define ROUTER_SSID CONFIG_ROUTER_SSID
+#define ROUTER_PASS CONFIG_ROUTER_PASS
 
 static const char *TAG = "mesh";
 static esp_netif_t *netif_sta;
 
 static void on_mesh_event(void *arg, esp_event_base_t base, int32_t id, void *data) {
 	if (id == MESH_EVENT_PARENT_CONNECTED && esp_mesh_is_root()) {
-		esp_netif_dhcp_start(netif_sta);
+		esp_netif_dhcpc_start(netif_sta);
 	}
 }
 
@@ -35,7 +36,7 @@ void app_main(void) {
 						   &on_mesh_event, NULL));
 
 	mesh_cfg_t cfg = MESH_INIT_CONFIG_DEFAULT();
-	memcpy(cfg.mesh_id.addr, "MESH01, 6");
+	memcpy(cfg.mesh_id.addr, "MESH01", 6);
 	cfg.router.ssid_len = strlen(ROUTER_SSID);
 	memcpy(cfg.router.ssid, ROUTER_SSID, cfg.router.ssid_len);
 	memcpy(cfg.router.password, ROUTER_PASS, strlen(ROUTER_PASS));
