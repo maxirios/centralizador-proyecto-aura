@@ -33,19 +33,23 @@ idf.py set-target esp32s3
 
 ---
 
-### 3. Configuración de Wi-Fi y Malla (`menuconfig`)
+### 3. Configuración de Malla y Aula
 
-Las credenciales de red y los parámetros de la malla se configuran de forma interactiva directamente desde la interfaz gráfica de terminal:
+Las credenciales de la malla y el aula asignada se pueden configurar mediante `menuconfig` o copiando la plantilla local:
 
+#### Opción A: Archivo local (Recomendado para desarrollo)
+```bash
+cp main/config_local.ejemplo.h main/config_local.h
+```
+Edita `main/config_local.h` con el `CONFIG_MESH_ID_BYTES` y la clave de la malla dados por la cátedra. Este archivo está en el `.gitignore`.
+
+#### Opción B: Vía terminal (`menuconfig`)
 ```bash
 idf.py menuconfig
 ```
-
-1. Navega hasta el menú **`Mesh Wi-Fi Configuration --->`** (o **`Wi-Fi Configuration --->`**).
-2. Ingresa el **Router SSID** y el **Router Password**.
-3. Presiona `S` para guardar los cambios y luego `Q` para salir.
-
-Los datos se guardarán de forma local y segura en tu archivo `sdkconfig` sin exponer contraseñas al repositorio de Git.
+1. Navega hasta el menú **`AURA Mesh Intermediary Configuration --->`**.
+2. Ajusta la contraseña de la malla y el identificador de aula por defecto.
+3. Guarda los cambios con `S` y sal con `Q`.
 
 ---
 

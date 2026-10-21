@@ -1,71 +1,87 @@
+#include <stdio.h>
 #include <string.h>
 #include "esp_log.h"
-#include "esp_wifi.h"
-#include "esp_netif.h"
-#include "esp_event.h"
-#include "esp_mesh.h"
-#include "esp_mac.h"
+#include "esp_err.h"
 #include "nvs_flash.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "mesh_net.h"
 
-#define ROUTER_SSID CONFIG_ROUTER_SSID
-#define ROUTER_PASS CONFIG_ROUTER_PASS
+#if __has_include("config_local.h")
+#include "config_local.h"
+#else
+#define CONFIG_MESH_ID_BYTES 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc
+#ifndef CONFIG_MESH_AP_PASSWORD
+#define CONFIG_MESH_AP_PASSWORD "clave-mesh-aura"
+#endif
+#ifndef CONFIG_MESH_AULA_DEFECTO
+#define CONFIG_MESH_AULA_DEFECTO "aula1"
+#endif
+#endif
 
-static const char *TAG = "mesh";
-static esp_netif_t *netif_sta;
+static const char *TAG = "CENTRALIZADOR_APP";
 
-static void on_mesh_event(void *arg, esp_event_base_t base, int32_t id, void *data) {
-	if (id == MESH_EVENT_PARENT_CONNECTED && esp_mesh_is_root()) {
-		esp_netif_dhcpc_start(netif_sta);
-	}
+static void on_telemetria_recibida(const uint8_t mac[6], const char *hw_id, const char *values_json, uint64_t ts_ms)
+{
+    ESP_LOGI(TAG, "[UI_FEED] Telemetria de %s: %s (ts=%llu)", hw_id, values_json, ts_ms);
 }
 
-void app_main(void) {
-	ESP_ERROR_CHECK(nvs_flash_init());
-	ESP_ERROR_CHECK(esp_netif_init());
-	ESP_ERROR_CHECK(esp_event_loop_create_default());
-	ESP_ERROR_CHECK(esp_netif_create_default_wifi_mesh_netifs(&netif_sta, NULL));
-
-	wifi_init_config_t wifi_cfg = WIFI_INIT_CONFIG_DEFAULT();
-	ESP_ERROR_CHECK(esp_wifi_init(&wifi_cfg));
-	ESP_ERROR_CHECK(esp_wifi_start());
-
-	ESP_ERROR_CHECK(esp_mesh_init());
-	ESP_ERROR_CHECK(esp_event_handler_register(MESH_EVENT, ESP_EVENT_ANY_ID,
-						   &on_mesh_event, NULL));
-
-	mesh_cfg_t cfg = MESH_INIT_CONFIG_DEFAULT();
-	memcpy(cfg.mesh_id.addr, "MESH01", 6);
-	cfg.router.ssid_len = strlen(ROUTER_SSID);
-	memcpy(cfg.router.ssid, ROUTER_SSID, cfg.router.ssid_len);
-	memcpy(cfg.router.password, ROUTER_PASS, strlen(ROUTER_PASS));
-	cfg.mesh_ap.max_connection = 4;
-	ESP_ERROR_CHECK(esp_mesh_set_config(&cfg));
-	ESP_ERROR_CHECK(esp_mesh_start());
-
-	float value = 20.0f;
-	while (true) {
-		if (esp_mesh_is_root()) {
-			uint8_t buf[sizeof(float)];
-			mesh_addr_t from;
-			mesh_data_t data = { .data = buf, .size = sizeof(buf) };
-			int flag = 0;
-			if (esp_mesh_recv(&from, &data, 2000, &flag, NULL, 0) == ESP_OK) {
-				float received;
-				memcpy(&received, buf, sizeof(received));
-				ESP_LOGI(TAG, "de " MACSTR ": %.2f", MAC2STR(from.addr), received);
-			}
-		} else {
-			mesh_data_t data = {
-				.data = (uint8_t *)&value, .size = sizeof(value),
-				.proto = MESH_PROTO_BIN, .tos = MESH_TOS_P2P,
-			};
-			esp_err_t err = esp_mesh_send(NULL, &data, MESH_DATA_P2P, NULL, 0);
-			ESP_LOGI(TAG, "envio %.2f -> %s", value, esp_err_to_name(err));
-			value +=0.1f;
-			vTaskDelay(pdMS_TO_TICKS(2000));
-		}
-	}
+static void on_estado_malla(bool conectado_raiz, int cantidad_hijos)
+{
+    ESP_LOGI(TAG, "[RED_STATUS] Conectado a raiz: %s | Hojas activas: %d",
+             conectado_raiz ? "SI" : "NO", cantidad_hijos);
 }
 
+static bool on_filtro_local(const uint8_t mac[6], const aura_trama_t *trama)
+{
+    /*
+     * Hook preparado para logica propia local y horarios de uso asignados (Offline):
+     * Permite actuar sobre actuadores de las hojas localmente segun el calendario
+     * o filtrar/agregar muestras antes del reenvio a la nube.
+     */
+    return true;
+}
+
+static void tarea_interaccion_centralizador(void *arg)
+{
+    while (true) {
+        vTaskDelay(pdMS_TO_TICKS(15000));
+
+        if (mesh_net_is_conectado()) {
+            ESP_LOGI(TAG, "[CENTRALIZADOR] Operando normalmente en aula: '%s' | Hijos: %d",
+                     mesh_net_get_aula(), mesh_net_get_hijos());
+        } else {
+            ESP_LOGW(TAG, "[CENTRALIZADOR] Esperando asociacion a nodo raiz...");
+        }
+    }
+}
+
+void app_main(void)
+{
+    ESP_LOGI(TAG, "Iniciando Centralizador de Aula (ESP32-S3 + ESP-MESH)...");
+
+    esp_err_t err = nvs_flash_init();
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        err = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(err);
+
+    const uint8_t mesh_id[6] = {CONFIG_MESH_ID_BYTES};
+    mesh_net_config_t net_cfg = {
+        .mesh_password = CONFIG_MESH_AP_PASSWORD,
+        .aula_por_defecto = CONFIG_MESH_AULA_DEFECTO,
+        .max_capas = 6,
+        .max_hijos = 6,
+    };
+    memcpy(net_cfg.mesh_id, mesh_id, 6);
+
+    mesh_net_set_telemetria_cb(on_telemetria_recibida);
+    mesh_net_set_estado_cb(on_estado_malla);
+    mesh_net_set_filtro_local_cb(on_filtro_local);
+
+    ESP_ERROR_CHECK(mesh_net_init(&net_cfg));
+    ESP_ERROR_CHECK(mesh_net_start());
+
+    xTaskCreate(tarea_interaccion_centralizador, "ui_coordinator", 3072, NULL, 3, NULL);
+}

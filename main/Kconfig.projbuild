@@ -1,15 +1,15 @@
-menu "Wi-Fi Configuration"
+menu "AURA Mesh Intermediary Configuration"
 
-    config ROUTER_SSID
-        string "Router SSID"
-        default "hotspot"
+    config AURA_MESH_AP_PASSWORD
+        string "Mesh AP Password"
+        default "clave-mesh-aura"
         help
-            SSID del router Wi-Fi al que se conectara el nodo Root.
+            Clave de red WPA2 para la malla ESP-WIFI-MESH.
 
-    config ROUTER_PASS
-        string "Router Password"
-        default "password"
+    config AURA_DEFAULT_AULA
+        string "Aula por defecto"
+        default "aula1"
         help
-            Contrasena del router Wi-Fi.
+            Identificador del aula inicial para filtrado y Vendor IE si NVS está vacía.
 
 endmenu

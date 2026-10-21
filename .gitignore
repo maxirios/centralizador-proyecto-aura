@@ -8,6 +8,8 @@ sdkconfig.*
 
 # Local configuration overrides (.local, .esp32s3, .esp32c6, etc.)
 sdkconfig.defaults.*
+config_local.h
+main/config_local.h
 
 # Component manager
 dependencies.lock
