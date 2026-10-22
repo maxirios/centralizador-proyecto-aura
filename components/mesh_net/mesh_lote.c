@@ -91,7 +91,6 @@ esp_err_t mesh_lote_agregar(const uint8_t mac[6], const uint8_t *trama, size_t l
 
     bool cabe = aura_lote_agregar(&s_lote, mac, trama, largo);
     if (!cabe) {
-        /* Si no entra en el lote actual, despachamos el que hay y creamos uno nuevo */
         if (s_lote.cantidad > 0 && s_enviar_cb) {
             s_enviar_cb(s_lote.buf, s_lote.largo);
         }
@@ -100,7 +99,6 @@ esp_err_t mesh_lote_agregar(const uint8_t mac[6], const uint8_t *trama, size_t l
         aura_lote_agregar(&s_lote, mac, trama, largo);
     }
 
-    /* Si es prioritario, no esperamos a la ventana de 50 ms */
     if (prioritario && s_lote.cantidad > 0) {
         if (s_enviar_cb) {
             s_enviar_cb(s_lote.buf, s_lote.largo);
