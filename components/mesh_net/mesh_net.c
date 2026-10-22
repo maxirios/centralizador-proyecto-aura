@@ -66,7 +66,6 @@ esp_err_t mesh_net_anunciar_aula(void)
         mesh_net_init();
     }
 
-    /* Limpiar registros previos */
     esp_wifi_set_vendor_ie(false, WIFI_VND_IE_TYPE_BEACON, WIFI_VND_IE_ID_1, NULL);
     esp_wifi_set_vendor_ie(false, WIFI_VND_IE_TYPE_PROBE_RESP, WIFI_VND_IE_ID_1, NULL);
 
