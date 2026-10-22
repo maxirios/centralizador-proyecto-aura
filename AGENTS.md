@@ -8,7 +8,7 @@ Este repositorio contiene el firmware del **Centralizador** del Proyecto Aura: u
 - **Pantalla:** Waveshare ESP32-S3-Touch-LCD-7 (RGB 800×480 nativo, operando en **modo vertical / portrait a 480×800** mediante rotación de LVGL).
 - **Táctil:** Goodix GT911 (I2C) con inversión/rotación de ejes mapeada a portrait.
 - **Frameworks:** ESP-IDF v5.x + LVGL v9.x (`esp_lvgl_port`).
-- **Rol de Red:** Nodo Centralizador ESP-MESH (recibe paquetes JSON de nodos sensores y los deriva al Gateway Root).
+- **Rol de Red:** Nodo Concentrador / Intermediario ESP-WIFI-MESH (capa 2 del aula). Se conecta hacia arriba al Gateway Root (único nodo con salida a Internet vía Wi-Fi) y hacia abajo coordina a los Nodos Hoja (sensores ambientales y actuadores/relés). No se asocia a routers Wi-Fi directamente.
 
 ## Comandos Estándar de Trabajo
 | Tarea | Comando |
