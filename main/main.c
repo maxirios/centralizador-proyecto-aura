@@ -9,6 +9,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "aura_protocol.h"
+#include "mesh_net.h"
 
 #define ROUTER_SSID CONFIG_ROUTER_SSID
 #define ROUTER_PASS CONFIG_ROUTER_PASS
@@ -46,6 +47,9 @@ void app_main(void) {
 	cfg.mesh_ap.max_connection = 4;
 	ESP_ERROR_CHECK(esp_mesh_set_config(&cfg));
 	ESP_ERROR_CHECK(esp_mesh_start());
+
+	ESP_ERROR_CHECK(mesh_net_init());
+	ESP_ERROR_CHECK(mesh_net_anunciar_aula());
 
 	float value = 20.0f;
 	while (true) {
