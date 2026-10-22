@@ -20,6 +20,7 @@ Buscamos un código **limpio, legible y autodocumentado**. Escribe código que s
 - No hagas Push Directamente a `main`
 - Todos los cambios deben integrarse a través de **Pull Requests (PR)**
 - Los PR deben ser revisados y aprobados por el equipo
+- Toda PR con cambios en microcontroladores debe completar obligatoriamente la sección de pruebas siguiendo el formato de `docs/evidencia-pruebas.md` (evitando volcados masivos y separando por placa/etapa).
 
 ---
 

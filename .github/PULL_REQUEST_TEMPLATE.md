@@ -1,26 +1,22 @@
 ## Resumen
+<!-- Descripción clara y concisa de los cambios propuestos -->
 
-Proporciona una descripción clara y concisa de los cambios que estás proponiendo.
+## Cambios
+- 
 
-## Cambios (opcional)
-Si no vas a usar esta sección, elimínala.
+## Cómo se comprobó
+<!-- 
+- Si modifica firmware / microcontroladores: adjuntar evidencia siguiendo el formato de `docs/evidencia-pruebas.md`.
+- Si altera comportamiento visual físico (LEDs, pantalla LVGL): incluir bloque de evidencia visual (foto/GIF arrastrado en GitHub).
+- Si es documentación o configuración: describir brevemente cómo se verificó.
+-->
 
-- Corrección de error
-- Nueva funcionalidad
-- Actualización de documentación
+## Lista de verificación
+- [ ] Compilación exitosa en ESP-IDF (si aplica)
+- [ ] Evidencia de terminal adjuntada según `docs/evidencia-pruebas.md` (si aplica)
+- [ ] Evidencia visual adjuntada o no aplicable (si altera LEDs o pantalla)
+- [ ] Documentación actualizada (si aplica)
+- [ ] El código sigue las pautas de estilo del proyecto
 
-## Lista de verificación (opcional)
-Si no vas a usar esta sección, elimínala.
-
-- He probado mis cambios localmente
-- He actualizado la documentación
-- Mi código sigue las pautas de estilo del proyecto
-- He agregado pruebas que demuestren que mi corrección es efectiva o que mi funcionalidad funciona
-
-## Issues relacionados (opcional)
-Si no vas a usar esta sección, elimínala.
-
-Para que GitHub cierre automáticamente el issue al mergear este PR, usa palabras clave como:
-- `Closes #123` o `Close #123`
-- `Fixes #123` o `Fix #123`
-- `Resolves #123` o `Resolve #123`
+## Issues relacionados
+<!-- Closes #123 -->
