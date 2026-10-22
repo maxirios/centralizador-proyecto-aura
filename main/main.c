@@ -10,12 +10,26 @@
 #include "freertos/task.h"
 #include "aura_protocol.h"
 #include "mesh_net.h"
+#include "mesh_lote.h"
 
 #define ROUTER_SSID CONFIG_ROUTER_SSID
 #define ROUTER_PASS CONFIG_ROUTER_PASS
 
 static const char *TAG = "mesh";
 static esp_netif_t *netif_sta;
+
+static bool enviar_a_raiz_cb(const uint8_t *data, size_t len)
+{
+	mesh_data_t m_data = {
+		.data = (uint8_t *)data,
+		.size = len,
+		.proto = MESH_PROTO_BIN,
+		.tos = MESH_TOS_P2P,
+	};
+	esp_err_t err = esp_mesh_send(NULL, &m_data, MESH_DATA_P2P, NULL, 0);
+	ESP_LOGI(TAG, "Lote AURA enviado a raiz (%u bytes) -> %s", (unsigned)len, esp_err_to_name(err));
+	return (err == ESP_OK);
+}
 
 static void on_mesh_event(void *arg, esp_event_base_t base, int32_t id, void *data) {
 	if (id == MESH_EVENT_PARENT_CONNECTED && esp_mesh_is_root()) {
@@ -50,28 +64,27 @@ void app_main(void) {
 
 	ESP_ERROR_CHECK(mesh_net_init());
 	ESP_ERROR_CHECK(mesh_net_anunciar_aula());
+	ESP_ERROR_CHECK(mesh_lote_init(enviar_a_raiz_cb));
 
-	float value = 20.0f;
+	uint8_t rx_buf[AURA_TRAMA_MAX];
 	while (true) {
-		if (esp_mesh_is_root()) {
-			uint8_t buf[sizeof(float)];
-			mesh_addr_t from;
-			mesh_data_t data = { .data = buf, .size = sizeof(buf) };
-			int flag = 0;
-			if (esp_mesh_recv(&from, &data, 2000, &flag, NULL, 0) == ESP_OK) {
-				float received;
-				memcpy(&received, buf, sizeof(received));
-				ESP_LOGI(TAG, "de " MACSTR ": %.2f", MAC2STR(from.addr), received);
+		mesh_addr_t from;
+		mesh_data_t data = { .data = rx_buf, .size = sizeof(rx_buf) };
+		int flag = 0;
+		if (esp_mesh_recv(&from, &data, 1000, &flag, NULL, 0) == ESP_OK) {
+			aura_validacion_t v = aura_trama_validar(rx_buf, data.size);
+			if (v == AURA_TRAMA_OK) {
+				const aura_trama_t *t = (const aura_trama_t *)rx_buf;
+				bool prioritario = (t->tipo == AURA_TIPO_ALERTA ||
+				                    t->tipo == AURA_TIPO_RESULTADO ||
+				                    t->tipo == AURA_TIPO_REPORTE);
+				ESP_LOGI(TAG, "Trama valida de " MACSTR " [%s], seq=%u, prioritario=%d",
+				         MAC2STR(from.addr), aura_tipo_a_str(t->tipo), t->seq, prioritario);
+				mesh_lote_agregar(from.addr, rx_buf, data.size, prioritario);
+			} else {
+				ESP_LOGD(TAG, "Dato recibido de " MACSTR " no es trama simple AURA (%d bytes)",
+				         MAC2STR(from.addr), data.size);
 			}
-		} else {
-			mesh_data_t data = {
-				.data = (uint8_t *)&value, .size = sizeof(value),
-				.proto = MESH_PROTO_BIN, .tos = MESH_TOS_P2P,
-			};
-			esp_err_t err = esp_mesh_send(NULL, &data, MESH_DATA_P2P, NULL, 0);
-			ESP_LOGI(TAG, "envio %.2f -> %s", value, esp_err_to_name(err));
-			value +=0.1f;
-			vTaskDelay(pdMS_TO_TICKS(2000));
 		}
 	}
 }
