@@ -8,6 +8,7 @@
 #include "nvs_flash.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "aura_protocol.h"
 
 #define ROUTER_SSID CONFIG_ROUTER_SSID
 #define ROUTER_PASS CONFIG_ROUTER_PASS
@@ -23,6 +24,8 @@ static void on_mesh_event(void *arg, esp_event_base_t base, int32_t id, void *da
 
 void app_main(void) {
 	ESP_ERROR_CHECK(nvs_flash_init());
+	ESP_LOGI(TAG, "Protocolo AURA v%d cargado (cabecera %d B, payload max %d B)",
+	         AURA_PROTO_VERSION, AURA_CABECERA_BYTES, AURA_PAYLOAD_MAX);
 	ESP_ERROR_CHECK(esp_netif_init());
 	ESP_ERROR_CHECK(esp_event_loop_create_default());
 	ESP_ERROR_CHECK(esp_netif_create_default_wifi_mesh_netifs(&netif_sta, NULL));
