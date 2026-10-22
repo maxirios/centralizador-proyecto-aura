@@ -9,9 +9,7 @@ Esta guía aplica para toda Pull Request que introduzca o modifique código de m
 1. **Evitar volcados masivos:** No pegar salidas continuas de cientos de líneas de consola.
 2. **Dividir por microcontrolador o etapa:** Si se monitorean varias placas (ej. Centralizador ESP32-S3 vs Hoja ESP32-C3) o etapas distintas (ej. Conexión Wi-Fi/Malla vs Despacho de Comandos), separarlas en bloques independientes.
 3. **Contexto acotado:** Mostrar la línea clave acompañada de 2 a 3 líneas anteriores y posteriores para dar contexto sin saturar.
-4. **Imágenes y Fotos de Hardware:**
-   - Si se requiere adjuntar fotos de la pantalla física funcionando o capturas de LVGL, alojar los archivos en `docs/assets/` dentro de la misma rama y enlazarlos en el markdown con `![Descripción](docs/assets/archivo.jpg)`.
-   - Alternativamente, arrastrar la imagen directamente en el editor web de GitHub al revisar la PR.
+4. **Evidencia visual física:** Si el cambio altera el comportamiento visual (parpadeo de LEDs, estados de pantalla o LVGL), el agente debe proponer incluir la sección de evidencia visual en la PR con un marcador de posición para arrastrar la foto o video directamente desde la interfaz web de GitHub.
 
 ---
 
@@ -54,3 +52,12 @@ E (12340) MESH_NET: Error envio hacia raiz: ESP_ERR_TIMEOUT
 W (12350) MESH_NET: Reintentando en 1000 ms...
 I (13350) MESH_NET: Lote entregado exitosamente
 ```
+
+---
+
+## 4. Formato: Evidencia Visual Física (LEDs, Pantalla / LVGL)
+
+Utilizar cuando la PR modifique el comportamiento visual del hardware (ej. secuencias de LEDs o interfaces en pantalla). El agente debe consultar al usuario si desea incluir este bloque para adjuntar una foto o GIF desde GitHub:
+
+### Evidencia Visual
+<!-- Arrastrar o pegar aquí la foto o video desde la interfaz web de GitHub -->
