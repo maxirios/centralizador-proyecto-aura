@@ -14,6 +14,10 @@
 #include "mesh_hora.h"
 #include "mesh_isla.h"
 #include "mesh_hojas.h"
+#include "mesh_control.h"
+#include "driver/gpio.h"
+
+#define PIN_BOTON GPIO_NUM_0
 
 #define ROUTER_SSID CONFIG_ROUTER_SSID
 #define ROUTER_PASS CONFIG_ROUTER_PASS
@@ -57,6 +61,47 @@ static bool enviar_trama_mesh_cb(const uint8_t *mac, const uint8_t *data, size_t
 		         (unsigned)len, esp_err_to_name(err));
 	}
 	return (err == ESP_OK);
+}
+
+static void on_control_resultado(const mesh_control_resultado_t *res)
+{
+	char hw[AURA_HW_ID_BYTES];
+	aura_hw_id_de_mac(res->de_mac, hw);
+	ESP_LOGI(TAG, "Confirmacion de ejecucion de %s: cid='%s' aplicado=%s motivo='%s'",
+	         hw, res->command_id, res->aplicado ? "SI" : "NO", res->motivo);
+}
+
+static void tarea_boton_local(void *arg)
+{
+	gpio_config_t io_conf = {
+		.pin_bit_mask = (1ULL << PIN_BOTON),
+		.mode = GPIO_MODE_INPUT,
+		.pull_up_en = GPIO_PULLUP_ENABLE,
+		.pull_down_en = GPIO_PULLDOWN_DISABLE,
+		.intr_type = GPIO_INTR_DISABLE,
+	};
+	gpio_config(&io_conf);
+
+	int anterior = 1;
+	while (true) {
+		vTaskDelay(pdMS_TO_TICKS(50));
+		int nivel = gpio_get_level(PIN_BOTON);
+		if (anterior == 1 && nivel == 0) {
+			vTaskDelay(pdMS_TO_TICKS(30));
+			if (gpio_get_level(PIN_BOTON) == 0) {
+				uint8_t mac_hoja[6];
+				if (mesh_hojas_get_ultima(mac_hoja)) {
+					char hw[AURA_HW_ID_BYTES];
+					aura_hw_id_de_mac(mac_hoja, hw);
+					ESP_LOGI(TAG, "Boton pulsado: orden conmutar LED enviada a %s", hw);
+					mesh_control_enviar_comando(mac_hoja, "led", "{\"invertir\":true}", NULL, "centralizador");
+				} else {
+					ESP_LOGW(TAG, "Boton pulsado: sin hojas activas en el aula");
+				}
+			}
+		}
+		anterior = nivel;
+	}
 }
 
 static void on_mesh_event(void *arg, esp_event_base_t base, int32_t id, void *data) {
@@ -128,8 +173,11 @@ void app_main(void) {
 	ESP_ERROR_CHECK(mesh_net_init());
 	ESP_ERROR_CHECK(mesh_net_anunciar_aula());
 	ESP_ERROR_CHECK(mesh_hojas_init(mesh_net_get_aula(), NULL, NULL));
+	ESP_ERROR_CHECK(mesh_control_init(on_control_resultado));
 	ESP_ERROR_CHECK(mesh_lote_init(enviar_a_raiz_cb));
 	ESP_ERROR_CHECK(mesh_hora_init(enviar_trama_mesh_cb));
+
+	xTaskCreate(tarea_boton_local, "btn_local", 2048, NULL, 3, NULL);
 
 	uint8_t rx_buf[AURA_TRAMA_MAX];
 	while (true) {
@@ -143,6 +191,10 @@ void app_main(void) {
 
 				if (t->tipo == AURA_TIPO_HORA && mesh_hora_procesar_trama(from.addr, t)) {
 					continue;
+				}
+
+				if (t->tipo == AURA_TIPO_RESULTADO) {
+					mesh_control_procesar_resultado(from.addr, t);
 				}
 
 				bool descartar_reenvio = false;
