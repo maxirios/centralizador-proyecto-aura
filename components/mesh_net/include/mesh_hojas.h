@@ -111,6 +111,14 @@ bool mesh_hojas_hay_ausentes(void);
  */
 int mesh_hojas_get_lista(mesh_hoja_info_t *lista, size_t max_elementos);
 
+/**
+ * @brief Obtiene la direccion MAC de la ultima hoja del aula que envio datos.
+ *
+ * @param mac_salida Buffer de 6 bytes para almacenar la direccion MAC.
+ * @return true si se conoce una hoja activa, false si aun no hay ninguna.
+ */
+bool mesh_hojas_get_ultima(uint8_t mac_salida[6]);
+
 #ifdef __cplusplus
 }
 #endif
