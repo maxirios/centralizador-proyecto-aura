@@ -15,6 +15,8 @@
 #include "mesh_isla.h"
 #include "mesh_hojas.h"
 #include "mesh_control.h"
+#include "bsp_display.h"
+#include "bsp_touch.h"
 #include "driver/gpio.h"
 
 #define PIN_BOTON GPIO_NUM_0
@@ -177,7 +179,23 @@ void app_main(void) {
 	ESP_ERROR_CHECK(mesh_lote_init(enviar_a_raiz_cb));
 	ESP_ERROR_CHECK(mesh_hora_init(enviar_trama_mesh_cb));
 
-	xTaskCreate(tarea_boton_local, "btn_local", 2048, NULL, 3, NULL);
+	esp_err_t err_disp = bsp_display_init(NULL);
+	if (err_disp == ESP_OK) {
+		ESP_LOGI(TAG, "BSP Display RGB inicializado con exito");
+	} else {
+		ESP_LOGW(TAG, "BSP Display no inicializado (err=%s)", esp_err_to_name(err_disp));
+	}
+
+	esp_err_t err_touch = bsp_touch_init();
+	if (err_touch == ESP_OK) {
+		ESP_LOGI(TAG, "BSP Touch Goodix GT911 inicializado con exito");
+	} else {
+		ESP_LOGW(TAG, "BSP Touch no detectado (err=%s)", esp_err_to_name(err_touch));
+	}
+
+	if (err_disp != ESP_OK) {
+		xTaskCreate(tarea_boton_local, "btn_local", 2048, NULL, 3, NULL);
+	}
 
 	uint8_t rx_buf[AURA_TRAMA_MAX];
 	while (true) {
