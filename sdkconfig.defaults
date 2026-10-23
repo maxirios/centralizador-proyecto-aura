@@ -20,3 +20,11 @@ CONFIG_PARTITION_TABLE_FILENAME="partitions.csv"
 
 # RGB LCD
 CONFIG_LCD_RGB_RESTART_IN_VSYNC=y
+
+# Ancho de banda PSRAM para el panel RGB (valores del ejemplo LVGL v9 de Waveshare).
+# Sin XIP desde PSRAM, las operaciones de flash/Wi-Fi frenan la cache y el DMA RGB
+# pierde sincronia: imagen desplazada y texto corrupto.
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+CONFIG_SPIRAM_XIP_FROM_PSRAM=y
+CONFIG_ESP32S3_DATA_CACHE_64KB=y
+CONFIG_ESP32S3_DATA_CACHE_LINE_64B=y
