@@ -18,7 +18,8 @@ static const char *TAG = "bsp_display";
 
 #define CH422G_I2C_ADDR_SET  0x24
 #define CH422G_I2C_ADDR_IO   0x38
-#define CH422G_BL_BIT        (1 << 2)
+#define CH422G_VAL_BL_ON     0x1E  // Backlight ON, LCD_RST HIGH, TP_RST HIGH
+#define CH422G_VAL_BL_OFF    0x0E  // Backlight OFF, LCD_RST HIGH, TP_RST HIGH
 
 #define BSP_LCD_PCLK_PIN     7
 #define BSP_LCD_DE_PIN       5
@@ -81,14 +82,7 @@ esp_err_t bsp_display_backlight_init(void)
     }
 
     uint8_t set_cmd = 0x01; // Activa salidas IO en CH422G
-    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
-    i2c_master_start(cmd);
-    i2c_master_write_byte(cmd, (CH422G_I2C_ADDR_SET << 1) | I2C_MASTER_WRITE, true);
-    i2c_master_write_byte(cmd, set_cmd, true);
-    i2c_master_stop(cmd);
-    err = i2c_master_cmd_begin(BSP_I2C_NUM, cmd, pdMS_TO_TICKS(100));
-    i2c_cmd_link_delete(cmd);
-
+    err = i2c_master_write_to_device(BSP_I2C_NUM, CH422G_I2C_ADDR_SET, &set_cmd, 1, pdMS_TO_TICKS(100));
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "Expansor CH422G no respondio a configuracion de salidas (err=%s)", esp_err_to_name(err));
     }
@@ -102,19 +96,8 @@ esp_err_t bsp_display_set_backlight(bool on)
         return err;
     }
 
-    if (on) {
-        s_ch422g_io_state |= CH422G_BL_BIT;
-    } else {
-        s_ch422g_io_state &= ~CH422G_BL_BIT;
-    }
-
-    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
-    i2c_master_start(cmd);
-    i2c_master_write_byte(cmd, (CH422G_I2C_ADDR_IO << 1) | I2C_MASTER_WRITE, true);
-    i2c_master_write_byte(cmd, s_ch422g_io_state, true);
-    i2c_master_stop(cmd);
-    err = i2c_master_cmd_begin(BSP_I2C_NUM, cmd, pdMS_TO_TICKS(100));
-    i2c_cmd_link_delete(cmd);
+    s_ch422g_io_state = on ? CH422G_VAL_BL_ON : CH422G_VAL_BL_OFF;
+    err = i2c_master_write_to_device(BSP_I2C_NUM, CH422G_I2C_ADDR_IO, &s_ch422g_io_state, 1, pdMS_TO_TICKS(100));
 
     if (err == ESP_OK) {
         ESP_LOGI(TAG, "Backlight LCD %s", on ? "ENCENDIDO" : "APAGADO");

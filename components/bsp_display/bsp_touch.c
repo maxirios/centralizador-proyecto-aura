@@ -14,8 +14,45 @@ static const char *TAG = "bsp_touch";
 #define GT911_REG_STATUS        0x814E
 #define GT911_REG_POINT1        0x814F
 
+#define BSP_TOUCH_INT_GPIO       GPIO_NUM_4
+#define CH422G_I2C_ADDR_SET      0x24
+#define CH422G_I2C_ADDR_IO       0x38
+
 static uint8_t s_gt911_addr = BSP_TOUCH_GT911_ADDR_PRIM;
 static bool s_touch_initialized = false;
+
+static void gt911_hardware_reset(void)
+{
+    uint8_t set_cmd = 0x01;
+    if (i2c_master_write_to_device(BSP_TOUCH_I2C_NUM, CH422G_I2C_ADDR_SET, &set_cmd, 1, pdMS_TO_TICKS(50)) != ESP_OK) {
+        return;
+    }
+
+    gpio_config_t io_conf = {
+        .pin_bit_mask = (1ULL << BSP_TOUCH_INT_GPIO),
+        .mode = GPIO_MODE_OUTPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
+    gpio_config(&io_conf);
+
+    // 0x2C: TP_RST LOW, LCD_RST HIGH
+    uint8_t write_buf = 0x2C;
+    i2c_master_write_to_device(BSP_TOUCH_I2C_NUM, CH422G_I2C_ADDR_IO, &write_buf, 1, pdMS_TO_TICKS(50));
+    vTaskDelay(pdMS_TO_TICKS(10));
+
+    // INT en LOW para seleccionar direccion 0x5D
+    gpio_set_level(BSP_TOUCH_INT_GPIO, 0);
+    vTaskDelay(pdMS_TO_TICKS(10));
+
+    // 0x2E: TP_RST HIGH, LCD_RST HIGH
+    write_buf = 0x2E;
+    i2c_master_write_to_device(BSP_TOUCH_I2C_NUM, CH422G_I2C_ADDR_IO, &write_buf, 1, pdMS_TO_TICKS(50));
+    vTaskDelay(pdMS_TO_TICKS(50));
+
+    gpio_set_direction(BSP_TOUCH_INT_GPIO, GPIO_MODE_INPUT);
+}
 
 static esp_err_t gt911_read_reg(uint16_t reg, uint8_t *data, size_t len)
 {
@@ -43,6 +80,8 @@ esp_err_t bsp_touch_init(void)
         ESP_LOGE(TAG, "Error inicializando I2C para tactil: %s", esp_err_to_name(err));
         return err;
     }
+
+    gt911_hardware_reset();
 
     uint8_t prod_id[4] = {0};
     s_gt911_addr = BSP_TOUCH_GT911_ADDR_PRIM;
