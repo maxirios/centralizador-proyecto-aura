@@ -19,6 +19,12 @@ Este repositorio contiene el firmware del **Centralizador** del Proyecto Aura: u
 | Flashear y abrir monitor serie | `idf.py -p /dev/ttyACM0 flash monitor` |
 | Limpieza estándar | `idf.py clean` |
 
+## Repositorios y Documentación de Referencia
+| Referencia / Propósito | Repositorio / Enlace | Descripción |
+| :--- | :--- | :--- |
+| Red Mesh y Protocolo AURA | [aura-firmware (UNRaf)](https://github.com/Universidad-Nacional-de-Rafaela/aura-firmware) | Repo oficial de UNRaf: contratos de red AURA, lotes, hora, comandos y telemetría. |
+| Hardware y Drivers BSP | [ESP32-S3-Touch-LCD-7 (Waveshare)](https://github.com/waveshareteam/ESP32-S3-Touch-LCD-7) | Repo oficial del fabricante: driver ST7262, reset GT911, control CH422G y LVGL v9. |
+
 ## Reglas Críticas de Arquitectura y Seguridad
 1. **Configuración inmutable a mano:** Nunca edites `sdkconfig` directamente. Todo cambio persistente va en `sdkconfig.defaults`.
 2. **Secretos fuera de Git:** Parámetros sensibles de red Wi-Fi van en `sdkconfig.defaults.local` (en `.gitignore`).
