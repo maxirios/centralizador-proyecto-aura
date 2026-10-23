@@ -26,17 +26,27 @@ static void on_btn_click(lv_event_t *e)
     }
 }
 
+// Corre en la tarea del emisor (sys_evt, mesh_hojas): solo marca el modelo como sucio.
+// El redibujo se hace en la tarea de LVGL para no consumir stack ajeno.
+static volatile bool s_sucio = true;
+
 static void on_bridge_notif(ui_evento_tipo_t evento, const void *datos, void *user_data)
 {
-    if (ui_port_lock(100)) {
+    s_sucio = true;
+}
+
+static void refresco_timer_cb(lv_timer_t *t)
+{
+    if (s_sucio) {
+        s_sucio = false;
         ui_view_test_actualizar();
-        ui_port_unlock();
     }
 }
 
 void ui_view_test_actualizar(void)
 {
-    ui_estado_aula_t snap;
+    // Static: el snapshot ocupa ~2 KB y solo se usa desde la tarea de LVGL
+    static ui_estado_aula_t snap;
     if (ui_bridge_get_snapshot(&snap) != ESP_OK) {
         return;
     }
@@ -172,6 +182,7 @@ esp_err_t ui_view_test_create(void)
     lv_obj_set_style_pad_top(s_lbl_cmd_result, 8, 0);
 
     ui_bridge_registrar_observador(on_bridge_notif, NULL);
+    lv_timer_create(refresco_timer_cb, 250, NULL);
 
     ui_view_test_actualizar();
 
