@@ -48,7 +48,10 @@ esp_err_t bsp_touch_init(void)
     };
     esp_err_t err = i2c_param_config(BSP_TOUCH_I2C_NUM, &conf);
     if (err == ESP_OK) {
-        i2c_driver_install(BSP_TOUCH_I2C_NUM, conf.mode, 0, 0, 0);
+        err = i2c_driver_install(BSP_TOUCH_I2C_NUM, conf.mode, 0, 0, 0);
+        if (err == ESP_ERR_INVALID_STATE) {
+            err = ESP_OK;
+        }
     }
 
     uint8_t prod_id[4] = {0};
