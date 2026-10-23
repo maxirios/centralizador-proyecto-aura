@@ -13,6 +13,7 @@
 #include "mesh_lote.h"
 #include "mesh_hora.h"
 #include "mesh_isla.h"
+#include "mesh_hojas.h"
 
 #define ROUTER_SSID CONFIG_ROUTER_SSID
 #define ROUTER_PASS CONFIG_ROUTER_PASS
@@ -78,6 +79,14 @@ static void on_mesh_event(void *arg, esp_event_base_t base, int32_t id, void *da
 		}
 	} else if (id == MESH_EVENT_PARENT_DISCONNECTED) {
 		mesh_isla_notificar_padre_desconectado();
+	} else if (id == MESH_EVENT_CHILD_CONNECTED) {
+		mesh_event_child_connected_t *c = (mesh_event_child_connected_t *)data;
+		mesh_hojas_notificar_child_connected(c->mac);
+		ESP_LOGI(TAG, "Hijo conectado a la malla: " MACSTR " (aid %d)", MAC2STR(c->mac), c->aid);
+	} else if (id == MESH_EVENT_CHILD_DISCONNECTED) {
+		mesh_event_child_disconnected_t *c = (mesh_event_child_disconnected_t *)data;
+		mesh_hojas_notificar_child_disconnected(c->mac);
+		ESP_LOGW(TAG, "Hijo desconectado de la malla: " MACSTR, MAC2STR(c->mac));
 	}
 }
 
@@ -118,6 +127,7 @@ void app_main(void) {
 
 	ESP_ERROR_CHECK(mesh_net_init());
 	ESP_ERROR_CHECK(mesh_net_anunciar_aula());
+	ESP_ERROR_CHECK(mesh_hojas_init(mesh_net_get_aula(), NULL, NULL));
 	ESP_ERROR_CHECK(mesh_lote_init(enviar_a_raiz_cb));
 	ESP_ERROR_CHECK(mesh_hora_init(enviar_trama_mesh_cb));
 
@@ -132,6 +142,12 @@ void app_main(void) {
 				const aura_trama_t *t = (const aura_trama_t *)rx_buf;
 
 				if (t->tipo == AURA_TIPO_HORA && mesh_hora_procesar_trama(from.addr, t)) {
+					continue;
+				}
+
+				bool descartar_reenvio = false;
+				mesh_hojas_procesar_trama(from.addr, t, &descartar_reenvio);
+				if (descartar_reenvio || mesh_isla_esta_activa()) {
 					continue;
 				}
 
