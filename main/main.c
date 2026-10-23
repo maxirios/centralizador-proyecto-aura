@@ -115,6 +115,7 @@ static void on_mesh_event(void *arg, esp_event_base_t base, int32_t id, void *da
 		if (mesh_isla_esta_activa()) {
 			esp_mesh_set_self_organized(false, false);
 		}
+		mesh_net_anunciar_aula();
 		ui_bridge_actualizar_red(!mesh_isla_esta_activa(), mesh_isla_esta_activa(), mesh_isla_get_canal(), mesh_net_get_aula());
 	} else if (id == MESH_EVENT_SCAN_DONE) {
 		if (mesh_isla_esta_activa()) {
@@ -124,6 +125,7 @@ static void on_mesh_event(void *arg, esp_event_base_t base, int32_t id, void *da
 	} else if (id == MESH_EVENT_PARENT_CONNECTED) {
 		mesh_event_connected_t *c = (mesh_event_connected_t *)data;
 		mesh_isla_notificar_padre_conectado(c->connected.channel);
+		mesh_net_anunciar_aula();
 		ui_bridge_actualizar_red(true, false, c->connected.channel, mesh_net_get_aula());
 		if (esp_mesh_is_root()) {
 			esp_netif_dhcpc_start(netif_sta);
