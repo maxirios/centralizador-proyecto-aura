@@ -55,9 +55,12 @@ void ui_view_test_actualizar(void)
         if (snap.red.gateway_conectado) {
             lv_label_set_text_fmt(s_lbl_gw, "GATEWAY OK | CH %d | %s", snap.red.canal, snap.red.aula);
             lv_obj_set_style_text_color(s_lbl_gw, lv_color_hex(0x22C55E), 0);
-        } else {
+        } else if (snap.red.modo_isla) {
             lv_label_set_text_fmt(s_lbl_gw, "MODO ISLA | CH %d | %s", snap.red.canal, snap.red.aula);
             lv_obj_set_style_text_color(s_lbl_gw, lv_color_hex(0xF59E0B), 0);
+        } else {
+            lv_label_set_text_fmt(s_lbl_gw, "BUSCANDO GW... | %s", snap.red.aula);
+            lv_obj_set_style_text_color(s_lbl_gw, lv_color_hex(0xEF4444), 0);
         }
     }
 
@@ -103,8 +106,10 @@ void ui_view_test_actualizar(void)
 
                 lv_obj_t *lbl_tele = lv_label_create(card);
                 if (n->tiene_telemetria) {
-                    lv_label_set_text_fmt(lbl_tele, "Temp: %.1f C   Hum: %.1f %%\nCO2: %.0f ppm",
-                                          n->temp, n->hum, n->co2);
+                    char buf_tele[64];
+                    snprintf(buf_tele, sizeof(buf_tele), "Temp: %.1f C   Hum: %.1f %%\nCO2: %.0f ppm",
+                             n->temp, n->hum, n->co2);
+                    lv_label_set_text(lbl_tele, buf_tele);
                 } else {
                     lv_label_set_text(lbl_tele, "Registrada (esperando mediciones)");
                 }
