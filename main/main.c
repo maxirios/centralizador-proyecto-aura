@@ -17,6 +17,7 @@
 #include "mesh_control.h"
 #include "bsp_display.h"
 #include "bsp_touch.h"
+#include "ui_bridge.h"
 #include "driver/gpio.h"
 
 #define PIN_BOTON GPIO_NUM_0
@@ -71,6 +72,7 @@ static void on_control_resultado(const mesh_control_resultado_t *res)
 	aura_hw_id_de_mac(res->de_mac, hw);
 	ESP_LOGI(TAG, "Confirmacion de ejecucion de %s: cid='%s' aplicado=%s motivo='%s'",
 	         hw, res->command_id, res->aplicado ? "SI" : "NO", res->motivo);
+	ui_bridge_on_control_resultado(res);
 }
 
 static void tarea_boton_local(void *arg)
@@ -96,7 +98,7 @@ static void tarea_boton_local(void *arg)
 					char hw[AURA_HW_ID_BYTES];
 					aura_hw_id_de_mac(mac_hoja, hw);
 					ESP_LOGI(TAG, "Boton pulsado: orden conmutar LED enviada a %s", hw);
-					mesh_control_enviar_comando(mac_hoja, "led", "{\"invertir\":true}", NULL, "centralizador");
+					ui_bridge_conmutar_actuador(mac_hoja, "led");
 				} else {
 					ESP_LOGW(TAG, "Boton pulsado: sin hojas activas en el aula");
 				}
@@ -111,6 +113,7 @@ static void on_mesh_event(void *arg, esp_event_base_t base, int32_t id, void *da
 		if (mesh_isla_esta_activa()) {
 			esp_mesh_set_self_organized(false, false);
 		}
+		ui_bridge_actualizar_red(!mesh_isla_esta_activa(), mesh_isla_esta_activa(), mesh_isla_get_canal(), mesh_net_get_aula());
 	} else if (id == MESH_EVENT_SCAN_DONE) {
 		if (mesh_isla_esta_activa()) {
 			mesh_event_scan_done_t *s = (mesh_event_scan_done_t *)data;
@@ -119,6 +122,7 @@ static void on_mesh_event(void *arg, esp_event_base_t base, int32_t id, void *da
 	} else if (id == MESH_EVENT_PARENT_CONNECTED) {
 		mesh_event_connected_t *c = (mesh_event_connected_t *)data;
 		mesh_isla_notificar_padre_conectado(c->connected.channel);
+		ui_bridge_actualizar_red(true, false, c->connected.channel, mesh_net_get_aula());
 		if (esp_mesh_is_root()) {
 			esp_netif_dhcpc_start(netif_sta);
 		} else {
@@ -126,6 +130,7 @@ static void on_mesh_event(void *arg, esp_event_base_t base, int32_t id, void *da
 		}
 	} else if (id == MESH_EVENT_PARENT_DISCONNECTED) {
 		mesh_isla_notificar_padre_desconectado();
+		ui_bridge_actualizar_red(false, mesh_isla_esta_activa(), 0, mesh_net_get_aula());
 	} else if (id == MESH_EVENT_CHILD_CONNECTED) {
 		mesh_event_child_connected_t *c = (mesh_event_child_connected_t *)data;
 		mesh_hojas_notificar_child_connected(c->mac);
@@ -174,7 +179,10 @@ void app_main(void) {
 
 	ESP_ERROR_CHECK(mesh_net_init());
 	ESP_ERROR_CHECK(mesh_net_anunciar_aula());
-	ESP_ERROR_CHECK(mesh_hojas_init(mesh_net_get_aula(), NULL, NULL));
+	ESP_ERROR_CHECK(ui_bridge_init());
+	ui_bridge_actualizar_red(!mesh_isla_esta_activa(), mesh_isla_esta_activa(), mesh_isla_get_canal(), mesh_net_get_aula());
+
+	ESP_ERROR_CHECK(mesh_hojas_init(mesh_net_get_aula(), ui_bridge_on_mesh_evento_hoja, ui_bridge_on_mesh_telemetria));
 	ESP_ERROR_CHECK(mesh_control_init(on_control_resultado));
 	ESP_ERROR_CHECK(mesh_lote_init(enviar_a_raiz_cb));
 	ESP_ERROR_CHECK(mesh_hora_init(enviar_trama_mesh_cb));
