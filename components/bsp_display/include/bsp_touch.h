@@ -17,31 +17,18 @@ extern "C" {
 #define BSP_TOUCH_GT911_ADDR_PRIM  0x5D
 #define BSP_TOUCH_GT911_ADDR_SEC   0x14
 
-/**
- * @brief Estructura de datos para coordenadas tactiles leidas del GT911.
- */
+// Coordenadas tactiles transformadas a portrait (480x800)
 typedef struct {
-    uint16_t x;             /**< Coordenada X mapeada a portrait (0..479) */
-    uint16_t y;             /**< Coordenada Y mapeada a portrait (0..799) */
-    uint8_t puntos;         /**< Cantidad de puntos detectados (0 si no hay toque) */
-    bool presionado;        /**< true si la pantalla esta siendo presionada */
+    uint16_t x;             // 0..479 (portrait)
+    uint16_t y;             // 0..799 (portrait)
+    uint8_t puntos;         // Puntos detectados (0 si no hay toque)
+    bool presionado;
 } bsp_touch_data_t;
 
-/**
- * @brief Inicializa el bus I2C y el controlador tactil Goodix GT911.
- *
- * Configura los pines I2C y detecta la direccion activa del GT911.
- *
- * @return esp_err_t ESP_OK en caso de exito.
- */
+// Secuencia de reset (GPIO 4 + CH422G) y verificacion de GT911 en 0x5D
 esp_err_t bsp_touch_init(void);
 
-/**
- * @brief Lee el estado del panel tactil y devuelve coordenadas mapeadas a orientacion vertical.
- *
- * @param[out] data Puntero a la estructura donde almacenar las coordenadas leidas.
- * @return esp_err_t ESP_OK si la lectura fue correcta, ESP_FAIL si hubo error en bus I2C.
- */
+// Lee coordenadas del GT911 con mapeo a portrait (x=raw_y, y=799-raw_x). No thread-safe.
 esp_err_t bsp_touch_read(bsp_touch_data_t *data);
 
 #ifdef __cplusplus
