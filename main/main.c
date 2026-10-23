@@ -11,6 +11,18 @@
 #include "aura_protocol.h"
 #include "mesh_net.h"
 #include "mesh_lote.h"
+#include "mesh_hora.h"
+#include "mesh_isla.h"
+#include "mesh_hojas.h"
+#include "mesh_control.h"
+#include "bsp_display.h"
+#include "bsp_touch.h"
+#include "ui_bridge.h"
+#include "ui_port.h"
+#include "ui_view_test.h"
+#include "driver/gpio.h"
+
+#define PIN_BOTON GPIO_NUM_0
 
 #define ROUTER_SSID CONFIG_ROUTER_SSID
 #define ROUTER_PASS CONFIG_ROUTER_PASS
@@ -31,9 +43,106 @@ static bool enviar_a_raiz_cb(const uint8_t *data, size_t len)
 	return (err == ESP_OK);
 }
 
+static bool enviar_trama_mesh_cb(const uint8_t *mac, const uint8_t *data, size_t len)
+{
+	mesh_data_t m_data = {
+		.data = (uint8_t *)data,
+		.size = len,
+		.proto = MESH_PROTO_BIN,
+		.tos = MESH_TOS_P2P,
+	};
+	mesh_addr_t dest;
+	mesh_addr_t *p_dest = NULL;
+	if (mac != NULL) {
+		memcpy(dest.addr, mac, 6);
+		p_dest = &dest;
+	}
+	esp_err_t err = esp_mesh_send(p_dest, &m_data, MESH_DATA_P2P, NULL, 0);
+	if (mac != NULL) {
+		ESP_LOGI(TAG, "Trama enviada a " MACSTR " (%u B) -> %s",
+		         MAC2STR(mac), (unsigned)len, esp_err_to_name(err));
+	} else {
+		ESP_LOGI(TAG, "Trama enviada a raiz (%u B) -> %s",
+		         (unsigned)len, esp_err_to_name(err));
+	}
+	return (err == ESP_OK);
+}
+
+static void on_control_resultado(const mesh_control_resultado_t *res)
+{
+	char hw[AURA_HW_ID_BYTES];
+	aura_hw_id_de_mac(res->de_mac, hw);
+	ESP_LOGI(TAG, "Confirmacion de ejecucion de %s: cid='%s' aplicado=%s motivo='%s'",
+	         hw, res->command_id, res->aplicado ? "SI" : "NO", res->motivo);
+	ui_bridge_on_control_resultado(res);
+}
+
+static void tarea_boton_local(void *arg)
+{
+	gpio_config_t io_conf = {
+		.pin_bit_mask = (1ULL << PIN_BOTON),
+		.mode = GPIO_MODE_INPUT,
+		.pull_up_en = GPIO_PULLUP_ENABLE,
+		.pull_down_en = GPIO_PULLDOWN_DISABLE,
+		.intr_type = GPIO_INTR_DISABLE,
+	};
+	gpio_config(&io_conf);
+
+	int anterior = 1;
+	while (true) {
+		vTaskDelay(pdMS_TO_TICKS(50));
+		int nivel = gpio_get_level(PIN_BOTON);
+		if (anterior == 1 && nivel == 0) {
+			vTaskDelay(pdMS_TO_TICKS(30));
+			if (gpio_get_level(PIN_BOTON) == 0) {
+				uint8_t mac_hoja[6];
+				if (mesh_hojas_get_ultima(mac_hoja)) {
+					char hw[AURA_HW_ID_BYTES];
+					aura_hw_id_de_mac(mac_hoja, hw);
+					ESP_LOGI(TAG, "Boton pulsado: orden conmutar LED enviada a %s", hw);
+					ui_bridge_conmutar_actuador(mac_hoja, "led");
+				} else {
+					ESP_LOGW(TAG, "Boton pulsado: sin hojas activas en el aula");
+				}
+			}
+		}
+		anterior = nivel;
+	}
+}
+
 static void on_mesh_event(void *arg, esp_event_base_t base, int32_t id, void *data) {
-	if (id == MESH_EVENT_PARENT_CONNECTED && esp_mesh_is_root()) {
-		esp_netif_dhcpc_start(netif_sta);
+	if (id == MESH_EVENT_STARTED) {
+		if (mesh_isla_esta_activa()) {
+			esp_mesh_set_self_organized(false, false);
+		}
+		mesh_net_anunciar_aula();
+		ui_bridge_actualizar_red(!mesh_isla_esta_activa(), mesh_isla_esta_activa(), mesh_isla_get_canal(), mesh_net_get_aula());
+	} else if (id == MESH_EVENT_SCAN_DONE) {
+		if (mesh_isla_esta_activa()) {
+			mesh_event_scan_done_t *s = (mesh_event_scan_done_t *)data;
+			mesh_isla_procesar_escaneo(s->number);
+		}
+	} else if (id == MESH_EVENT_PARENT_CONNECTED) {
+		mesh_event_connected_t *c = (mesh_event_connected_t *)data;
+		mesh_isla_notificar_padre_conectado(c->connected.channel);
+		mesh_net_anunciar_aula();
+		ui_bridge_actualizar_red(true, false, c->connected.channel, mesh_net_get_aula());
+		if (esp_mesh_is_root()) {
+			esp_netif_dhcpc_start(netif_sta);
+		} else {
+			mesh_hora_pedir_sincronizacion();
+		}
+	} else if (id == MESH_EVENT_PARENT_DISCONNECTED) {
+		mesh_isla_notificar_padre_desconectado();
+		ui_bridge_actualizar_red(false, mesh_isla_esta_activa(), 0, mesh_net_get_aula());
+	} else if (id == MESH_EVENT_CHILD_CONNECTED) {
+		mesh_event_child_connected_t *c = (mesh_event_child_connected_t *)data;
+		mesh_hojas_notificar_child_connected(c->mac);
+		ESP_LOGI(TAG, "Hijo conectado a la malla: " MACSTR " (aid %d)", MAC2STR(c->mac), c->aid);
+	} else if (id == MESH_EVENT_CHILD_DISCONNECTED) {
+		mesh_event_child_disconnected_t *c = (mesh_event_child_disconnected_t *)data;
+		mesh_hojas_notificar_child_disconnected(c->mac);
+		ESP_LOGW(TAG, "Hijo desconectado de la malla: " MACSTR, MAC2STR(c->mac));
 	}
 }
 
@@ -49,22 +158,66 @@ void app_main(void) {
 	ESP_ERROR_CHECK(esp_wifi_init(&wifi_cfg));
 	ESP_ERROR_CHECK(esp_wifi_start());
 
+	ESP_ERROR_CHECK(mesh_isla_init((const uint8_t *)"MESH01"));
+
 	ESP_ERROR_CHECK(esp_mesh_init());
 	ESP_ERROR_CHECK(esp_event_handler_register(MESH_EVENT, ESP_EVENT_ANY_ID,
 						   &on_mesh_event, NULL));
+	ESP_ERROR_CHECK(esp_mesh_fix_root(true));
+	ESP_ERROR_CHECK(esp_mesh_set_max_layer(6));
+	ESP_ERROR_CHECK(esp_mesh_disable_ps());
+	ESP_ERROR_CHECK(esp_mesh_set_ap_authmode(WIFI_AUTH_OPEN));
 
 	mesh_cfg_t cfg = MESH_INIT_CONFIG_DEFAULT();
 	memcpy(cfg.mesh_id.addr, "MESH01", 6);
-	cfg.router.ssid_len = strlen(ROUTER_SSID);
-	memcpy(cfg.router.ssid, ROUTER_SSID, cfg.router.ssid_len);
-	memcpy(cfg.router.password, ROUTER_PASS, strlen(ROUTER_PASS));
+	const char *router = mesh_isla_esta_activa() ? MESH_ROUTER_ISLA : "NO_EXISTE_ESTE_ROUTER";
+	cfg.router.ssid_len = strlen(router);
+	memcpy(cfg.router.ssid, router, cfg.router.ssid_len);
+	cfg.channel = mesh_isla_esta_activa() ? mesh_isla_get_canal() : 0;
+	cfg.allow_channel_switch = !mesh_isla_esta_activa();
 	cfg.mesh_ap.max_connection = 4;
+	cfg.mesh_ap.nonmesh_max_connection = 0;
+	cfg.mesh_ap.password[0] = '\0';
+
+	if (mesh_isla_esta_activa()) {
+		ESP_ERROR_CHECK(esp_mesh_set_type(MESH_ROOT));
+	}
 	ESP_ERROR_CHECK(esp_mesh_set_config(&cfg));
 	ESP_ERROR_CHECK(esp_mesh_start());
 
 	ESP_ERROR_CHECK(mesh_net_init());
 	ESP_ERROR_CHECK(mesh_net_anunciar_aula());
+	ESP_ERROR_CHECK(ui_bridge_init());
+	ui_bridge_actualizar_red(!mesh_isla_esta_activa(), mesh_isla_esta_activa(), mesh_isla_get_canal(), mesh_net_get_aula());
+
+	ESP_ERROR_CHECK(mesh_hojas_init(mesh_net_get_aula(), ui_bridge_on_mesh_evento_hoja, ui_bridge_on_mesh_telemetria));
+	ESP_ERROR_CHECK(mesh_control_init(on_control_resultado));
 	ESP_ERROR_CHECK(mesh_lote_init(enviar_a_raiz_cb));
+	ESP_ERROR_CHECK(mesh_hora_init(enviar_trama_mesh_cb));
+
+	esp_err_t err_disp = bsp_display_init(NULL);
+	if (err_disp == ESP_OK) {
+		ESP_LOGI(TAG, "BSP Display RGB inicializado con exito");
+		esp_err_t err_ui = ui_port_init();
+		if (err_ui == ESP_OK) {
+			ui_view_test_create();
+		} else {
+			ESP_LOGE(TAG, "Fallo al inicializar ui_port (%s)", esp_err_to_name(err_ui));
+		}
+	} else {
+		ESP_LOGW(TAG, "BSP Display no inicializado (err=%s)", esp_err_to_name(err_disp));
+	}
+
+	esp_err_t err_touch = bsp_touch_init();
+	if (err_touch == ESP_OK) {
+		ESP_LOGI(TAG, "BSP Touch Goodix GT911 inicializado con exito");
+	} else {
+		ESP_LOGW(TAG, "BSP Touch no detectado (err=%s)", esp_err_to_name(err_touch));
+	}
+
+	if (err_disp != ESP_OK) {
+		xTaskCreate(tarea_boton_local, "btn_local", 2048, NULL, 3, NULL);
+	}
 
 	uint8_t rx_buf[AURA_TRAMA_MAX];
 	while (true) {
@@ -75,6 +228,21 @@ void app_main(void) {
 			aura_validacion_t v = aura_trama_validar(rx_buf, data.size);
 			if (v == AURA_TRAMA_OK) {
 				const aura_trama_t *t = (const aura_trama_t *)rx_buf;
+
+				if (t->tipo == AURA_TIPO_HORA && mesh_hora_procesar_trama(from.addr, t)) {
+					continue;
+				}
+
+				if (t->tipo == AURA_TIPO_RESULTADO) {
+					mesh_control_procesar_resultado(from.addr, t);
+				}
+
+				bool descartar_reenvio = false;
+				mesh_hojas_procesar_trama(from.addr, t, &descartar_reenvio);
+				if (descartar_reenvio || mesh_isla_esta_activa()) {
+					continue;
+				}
+
 				bool prioritario = (t->tipo == AURA_TIPO_ALERTA ||
 				                    t->tipo == AURA_TIPO_RESULTADO ||
 				                    t->tipo == AURA_TIPO_REPORTE);
@@ -88,4 +256,3 @@ void app_main(void) {
 		}
 	}
 }
-
