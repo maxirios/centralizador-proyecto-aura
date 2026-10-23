@@ -38,20 +38,10 @@ esp_err_t bsp_touch_init(void)
 {
     ESP_LOGI(TAG, "Inicializando controlador tactil Goodix GT911 en I2C...");
 
-    i2c_config_t conf = {
-        .mode = I2C_MODE_MASTER,
-        .sda_io_num = BSP_TOUCH_I2C_SDA_PIN,
-        .sda_pullup_en = GPIO_PULLUP_ENABLE,
-        .scl_io_num = BSP_TOUCH_I2C_SCL_PIN,
-        .scl_pullup_en = GPIO_PULLUP_ENABLE,
-        .master.clk_speed = BSP_TOUCH_I2C_FREQ_HZ,
-    };
-    esp_err_t err = i2c_param_config(BSP_TOUCH_I2C_NUM, &conf);
-    if (err == ESP_OK) {
-        err = i2c_driver_install(BSP_TOUCH_I2C_NUM, conf.mode, 0, 0, 0);
-        if (err == ESP_ERR_INVALID_STATE) {
-            err = ESP_OK;
-        }
+    esp_err_t err = bsp_i2c_init();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Error inicializando I2C para tactil: %s", esp_err_to_name(err));
+        return err;
     }
 
     uint8_t prod_id[4] = {0};

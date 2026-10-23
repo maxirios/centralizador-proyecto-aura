@@ -48,7 +48,7 @@ static esp_lcd_panel_handle_t s_panel_handle = NULL;
 static bool s_i2c_initialized = false;
 static uint8_t s_ch422g_io_state = 0x00;
 
-static esp_err_t bsp_i2c_ensure_init(void)
+esp_err_t bsp_i2c_init(void)
 {
     if (s_i2c_initialized) {
         return ESP_OK;
@@ -75,7 +75,7 @@ static esp_err_t bsp_i2c_ensure_init(void)
 
 esp_err_t bsp_display_backlight_init(void)
 {
-    esp_err_t err = bsp_i2c_ensure_init();
+    esp_err_t err = bsp_i2c_init();
     if (err != ESP_OK) {
         return err;
     }
@@ -97,7 +97,7 @@ esp_err_t bsp_display_backlight_init(void)
 
 esp_err_t bsp_display_set_backlight(bool on)
 {
-    esp_err_t err = bsp_i2c_ensure_init();
+    esp_err_t err = bsp_i2c_init();
     if (err != ESP_OK) {
         return err;
     }

@@ -16,6 +16,13 @@ extern "C" {
 #define BSP_LCD_PORTRAIT_HEIGHT    800     /**< Alto util en orientacion portrait */
 
 /**
+ * @brief Inicializa el bus I2C maestro compartido para periféricos (retroiluminación CH422G y táctil GT911).
+ *
+ * @return esp_err_t ESP_OK en caso de exito.
+ */
+esp_err_t bsp_i2c_init(void);
+
+/**
  * @brief Inicializa el bus I2C y el expansor de E/S CH422G para el control de retroiluminacion.
  *
  * @return esp_err_t ESP_OK en caso de exito.
