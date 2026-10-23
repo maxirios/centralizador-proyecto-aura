@@ -163,21 +163,25 @@ void app_main(void) {
 	ESP_ERROR_CHECK(esp_mesh_init());
 	ESP_ERROR_CHECK(esp_event_handler_register(MESH_EVENT, ESP_EVENT_ANY_ID,
 						   &on_mesh_event, NULL));
+	ESP_ERROR_CHECK(esp_mesh_fix_root(true));
+	ESP_ERROR_CHECK(esp_mesh_set_max_layer(6));
+	ESP_ERROR_CHECK(esp_mesh_disable_ps());
+	ESP_ERROR_CHECK(esp_mesh_set_ap_authmode(WIFI_AUTH_OPEN));
 
 	mesh_cfg_t cfg = MESH_INIT_CONFIG_DEFAULT();
 	memcpy(cfg.mesh_id.addr, "MESH01", 6);
-	const char *router = mesh_isla_esta_activa() ? MESH_ROUTER_ISLA : ROUTER_SSID;
+	const char *router = mesh_isla_esta_activa() ? MESH_ROUTER_ISLA : "NO_EXISTE_ESTE_ROUTER";
 	cfg.router.ssid_len = strlen(router);
 	memcpy(cfg.router.ssid, router, cfg.router.ssid_len);
-	memcpy(cfg.router.password, ROUTER_PASS, strlen(ROUTER_PASS));
 	cfg.channel = mesh_isla_esta_activa() ? mesh_isla_get_canal() : 0;
 	cfg.allow_channel_switch = !mesh_isla_esta_activa();
 	cfg.mesh_ap.max_connection = 4;
+	cfg.mesh_ap.nonmesh_max_connection = 0;
+	cfg.mesh_ap.password[0] = '\0';
 
 	if (mesh_isla_esta_activa()) {
 		ESP_ERROR_CHECK(esp_mesh_set_type(MESH_ROOT));
 	}
-	ESP_ERROR_CHECK(esp_mesh_fix_root(true));
 	ESP_ERROR_CHECK(esp_mesh_set_config(&cfg));
 	ESP_ERROR_CHECK(esp_mesh_start());
 
