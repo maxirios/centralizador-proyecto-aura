@@ -142,21 +142,18 @@ esp_err_t bsp_touch_read(bsp_touch_data_t *data)
     uint16_t raw_x = point_buf[1] | (point_buf[2] << 8);
     uint16_t raw_y = point_buf[3] | (point_buf[4] << 8);
 
-    // Mapeo de ejes a orientacion vertical portrait (480x800):
-    // Hardware nativo: 800 horizontal x 480 vertical.
-    // Portrait: x = raw_y (0..479), y = (800 - 1 - raw_x) (0..799).
-    uint16_t portrait_x = raw_y;
-    uint16_t portrait_y = (BSP_LCD_H_RES > raw_x) ? (BSP_LCD_H_RES - 1 - raw_x) : 0;
-
-    if (portrait_x >= BSP_LCD_PORTRAIT_WIDTH) {
-        portrait_x = BSP_LCD_PORTRAIT_WIDTH - 1;
+    // Coordenadas nativas del panel (800x480).
+    // LVGL v9 con lv_display_set_rotation(s_disp, LV_DISPLAY_ROTATION_90)
+    // aplica la rotacion y mapeo a portrait automaticamente en indev_pointer_proc.
+    if (raw_x >= BSP_LCD_H_RES) {
+        raw_x = BSP_LCD_H_RES - 1;
     }
-    if (portrait_y >= BSP_LCD_PORTRAIT_HEIGHT) {
-        portrait_y = BSP_LCD_PORTRAIT_HEIGHT - 1;
+    if (raw_y >= BSP_LCD_V_RES) {
+        raw_y = BSP_LCD_V_RES - 1;
     }
 
-    data->x = portrait_x;
-    data->y = portrait_y;
+    data->x = raw_x;
+    data->y = raw_y;
     data->puntos = touch_count;
     data->presionado = true;
 
