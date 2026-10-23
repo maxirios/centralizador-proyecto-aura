@@ -13,8 +13,12 @@ static lv_obj_t *s_lbl_cmd_result = NULL;
 
 static void on_btn_click(lv_event_t *e)
 {
+    ESP_LOGI(TAG, "Boton 'CONMUTAR LED HOJA' presionado en UI");
     uint8_t mac[6];
     if (mesh_hojas_get_ultima(mac)) {
+        char hw[AURA_HW_ID_BYTES];
+        aura_hw_id_de_mac(mac, hw);
+        ESP_LOGI(TAG, "Enviando orden de conmutacion LED a %s", hw);
         esp_err_t err = ui_bridge_conmutar_actuador(mac, "led");
         if (err == ESP_OK) {
             lv_label_set_text(s_lbl_cmd_result, "Orden conmutar LED enviada!");
@@ -22,6 +26,7 @@ static void on_btn_click(lv_event_t *e)
             lv_label_set_text_fmt(s_lbl_cmd_result, "Fallo al enviar orden (%d)", (int)err);
         }
     } else {
+        ESP_LOGW(TAG, "Boton presionado pero sin hojas registradas en el aula");
         lv_label_set_text(s_lbl_cmd_result, "Sin hojas registradas en el aula");
     }
 }
