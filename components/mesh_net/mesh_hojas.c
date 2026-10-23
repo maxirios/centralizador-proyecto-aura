@@ -21,6 +21,8 @@ static SemaphoreHandle_t s_lock = NULL;
 static TaskHandle_t s_tarea_handle = NULL;
 static mesh_hoja_evento_cb_t s_evento_cb = NULL;
 static mesh_hoja_telemetria_cb_t s_telemetria_cb = NULL;
+static uint8_t s_ultima_mac[6] = {0};
+static bool s_hay_ultima = false;
 
 static void hojas_guardar_nvs(void)
 {
@@ -243,6 +245,8 @@ bool mesh_hojas_procesar_trama(const uint8_t de_mac[6], const aura_trama_t *tram
         return false;
     }
 
+    memcpy(s_ultima_mac, de_mac, 6);
+    s_hay_ultima = true;
     h->visto = xTaskGetTickCount();
     h->desconectada_desde = 0;
     if (h->ausente) {
@@ -337,4 +341,17 @@ int mesh_hojas_get_lista(mesh_hoja_info_t *lista, size_t max_elementos)
     }
     xSemaphoreGive(s_lock);
     return copiados;
+}
+
+bool mesh_hojas_get_ultima(uint8_t mac_salida[6])
+{
+    if (!mac_salida || xSemaphoreTake(s_lock, pdMS_TO_TICKS(50)) != pdTRUE) {
+        return false;
+    }
+    bool ok = s_hay_ultima;
+    if (ok) {
+        memcpy(mac_salida, s_ultima_mac, 6);
+    }
+    xSemaphoreGive(s_lock);
+    return ok;
 }
