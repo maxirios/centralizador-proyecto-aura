@@ -32,6 +32,7 @@ Este repositorio contiene el firmware del **Centralizador** del Proyecto Aura: u
 4. **Concurrencia FreeRTOS + LVGL:** La rutina `lv_timer_handler()` corre en una tarea FreeRTOS dedicada; toda llamada que interactúe con la UI debe usar los bloqueos de `esp_lvgl_port_lock()` / `esp_lvgl_port_unlock()`.
 5. **Modularidad en `components/`:** El código de drivers, lógica de red y pantallas debe desacoplarse en componentes locales (`components/bsp_display`, `components/mesh_net`, `components/ui`).
 6. **Pull Requests y Evidencia:** Toda PR con cambios en microcontroladores debe seguir la estructura y formato de pruebas de terminal definido en `docs/evidencia-pruebas.md`. Si el cambio altera el comportamiento visual físico (LEDs, pantallas o UI), consultar al usuario para dejar una sección de evidencia visual (foto o video arrastrado desde GitHub).
+7. **Comentarios y Estilo Conciso:** Evitar tags Doxygen verbosos (`@brief`, `@param`, `@return`) y sintaxis retrospectiva `/**<` (solo requeridos para contribuir a APIs públicas de Espressif). Usar comentarios directos de 1-2 líneas simples (`// ...`) enfocados en restricciones de hardware, unidades y concurrencia.
 
 ## Enrutador de Skills Especializadas (Context Pointers)
 Antes de implementar código o resolver problemas, consulta el archivo correspondiente:
