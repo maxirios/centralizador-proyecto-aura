@@ -43,15 +43,23 @@ static void hojas_guardar_nvs(void)
 
 static void hojas_cargar_nvs(void)
 {
+    uint8_t mi_mac[6];
+    bool tiene_mi_mac = (esp_read_mac(mi_mac, ESP_MAC_WIFI_STA) == ESP_OK);
+
     uint8_t macs[MESH_HOJAS_MAX][6];
     size_t tam = sizeof(macs);
     nvs_handle_t h;
-    if (nvs_open(NVS_NAMESPACE, NVS_READONLY, &h) != ESP_OK) {
+    if (nvs_open(NVS_NAMESPACE, NVS_READWRITE, &h) != ESP_OK) {
         return;
     }
     if (nvs_get_blob(h, NVS_KEY_HOJAS, macs, &tam) == ESP_OK) {
         int count = (int)(tam / 6);
+        bool purgado = false;
         for (int k = 0; k < count && s_cant_hojas < MESH_HOJAS_MAX; k++) {
+            if (tiene_mi_mac && memcmp(macs[k], mi_mac, 6) == 0) {
+                purgado = true;
+                continue;
+            }
             mesh_hoja_info_t *x = &s_hojas[s_cant_hojas++];
             memset(x, 0, sizeof(*x));
             memcpy(x->mac, macs[k], 6);
@@ -60,6 +68,9 @@ static void hojas_cargar_nvs(void)
             x->desconectada_desde = xTaskGetTickCount() | 1;
             x->intervalo_s = MESH_HOJAS_INTERVALO_DEFECTO_S;
         }
+        if (purgado) {
+            hojas_guardar_nvs();
+        }
         ESP_LOGI(TAG, "Hojas del aula recuperadas de NVS: %d", s_cant_hojas);
     }
     nvs_close(h);
@@ -67,6 +78,11 @@ static void hojas_cargar_nvs(void)
 
 static mesh_hoja_info_t *hoja_buscar_o_crear(const uint8_t mac[6])
 {
+    uint8_t mi_mac[6];
+    if (esp_read_mac(mi_mac, ESP_MAC_WIFI_STA) == ESP_OK && memcmp(mac, mi_mac, 6) == 0) {
+        return NULL;
+    }
+
     for (int i = 0; i < s_cant_hojas; i++) {
         if (memcmp(s_hojas[i].mac, mac, 6) == 0) {
             return &s_hojas[i];
@@ -232,6 +248,11 @@ bool mesh_hojas_procesar_trama(const uint8_t de_mac[6], const aura_trama_t *tram
         *out_descartar_reenvio = false;
     }
     if (!trama || !de_mac) {
+        return false;
+    }
+
+    uint8_t mi_mac[6];
+    if (esp_read_mac(mi_mac, ESP_MAC_WIFI_STA) == ESP_OK && memcmp(de_mac, mi_mac, 6) == 0) {
         return false;
     }
 
