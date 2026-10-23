@@ -1,4 +1,5 @@
 #include "mesh_net.h"
+#include "mesh_hojas.h"
 #include <string.h>
 #include <stdio.h>
 #include "esp_log.h"
@@ -131,6 +132,7 @@ esp_err_t mesh_net_set_aula(const char *nueva_aula)
 
     if (cambio) {
         ESP_LOGW(TAG, "Aula actualizada a '%s'. Deautenticando nodos hijos...", s_aula);
+        mesh_hojas_set_aula(s_aula);
         esp_wifi_deauth_sta(0);
     }
 
