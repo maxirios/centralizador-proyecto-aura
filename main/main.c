@@ -12,6 +12,7 @@
 #include "mesh_net.h"
 #include "mesh_lote.h"
 #include "mesh_hora.h"
+#include "mesh_isla.h"
 
 #define ROUTER_SSID CONFIG_ROUTER_SSID
 #define ROUTER_PASS CONFIG_ROUTER_PASS
@@ -58,12 +59,25 @@ static bool enviar_trama_mesh_cb(const uint8_t *mac, const uint8_t *data, size_t
 }
 
 static void on_mesh_event(void *arg, esp_event_base_t base, int32_t id, void *data) {
-	if (id == MESH_EVENT_PARENT_CONNECTED) {
+	if (id == MESH_EVENT_STARTED) {
+		if (mesh_isla_esta_activa()) {
+			esp_mesh_set_self_organized(false, false);
+		}
+	} else if (id == MESH_EVENT_SCAN_DONE) {
+		if (mesh_isla_esta_activa()) {
+			mesh_event_scan_done_t *s = (mesh_event_scan_done_t *)data;
+			mesh_isla_procesar_escaneo(s->number);
+		}
+	} else if (id == MESH_EVENT_PARENT_CONNECTED) {
+		mesh_event_connected_t *c = (mesh_event_connected_t *)data;
+		mesh_isla_notificar_padre_conectado(c->connected.channel);
 		if (esp_mesh_is_root()) {
 			esp_netif_dhcpc_start(netif_sta);
 		} else {
 			mesh_hora_pedir_sincronizacion();
 		}
+	} else if (id == MESH_EVENT_PARENT_DISCONNECTED) {
+		mesh_isla_notificar_padre_desconectado();
 	}
 }
 
@@ -79,16 +93,26 @@ void app_main(void) {
 	ESP_ERROR_CHECK(esp_wifi_init(&wifi_cfg));
 	ESP_ERROR_CHECK(esp_wifi_start());
 
+	ESP_ERROR_CHECK(mesh_isla_init((const uint8_t *)"MESH01"));
+
 	ESP_ERROR_CHECK(esp_mesh_init());
 	ESP_ERROR_CHECK(esp_event_handler_register(MESH_EVENT, ESP_EVENT_ANY_ID,
 						   &on_mesh_event, NULL));
 
 	mesh_cfg_t cfg = MESH_INIT_CONFIG_DEFAULT();
 	memcpy(cfg.mesh_id.addr, "MESH01", 6);
-	cfg.router.ssid_len = strlen(ROUTER_SSID);
-	memcpy(cfg.router.ssid, ROUTER_SSID, cfg.router.ssid_len);
+	const char *router = mesh_isla_esta_activa() ? MESH_ROUTER_ISLA : ROUTER_SSID;
+	cfg.router.ssid_len = strlen(router);
+	memcpy(cfg.router.ssid, router, cfg.router.ssid_len);
 	memcpy(cfg.router.password, ROUTER_PASS, strlen(ROUTER_PASS));
+	cfg.channel = mesh_isla_esta_activa() ? mesh_isla_get_canal() : 0;
+	cfg.allow_channel_switch = !mesh_isla_esta_activa();
 	cfg.mesh_ap.max_connection = 4;
+
+	if (mesh_isla_esta_activa()) {
+		ESP_ERROR_CHECK(esp_mesh_set_type(MESH_ROOT));
+	}
+	ESP_ERROR_CHECK(esp_mesh_fix_root(true));
 	ESP_ERROR_CHECK(esp_mesh_set_config(&cfg));
 	ESP_ERROR_CHECK(esp_mesh_start());
 
