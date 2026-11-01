@@ -77,6 +77,19 @@ static void on_control_resultado(const mesh_control_resultado_t *res)
 	ui_bridge_on_control_resultado(res);
 }
 
+static void tarea_demo_nodos(void *arg)
+{
+    static const uint8_t mac_a[6] = {0x02, 0x00, 0x00, 0x00, 0x00, 0x0A};
+    static const uint8_t mac_b[6] = {0x02, 0x00, 0x00, 0x00, 0x00, 0x0B};
+    static const uint8_t mac_c[6] = {0x02, 0x00, 0x00, 0x00, 0x00, 0x0C};
+    while (true) {
+        ui_bridge_on_mesh_telemetria(mac_a, 0, "{\"temp_c\":23.8,\"hum_pct\":51.2,\"co2_ppm\":640,\"led\":1}", false);
+        ui_bridge_on_mesh_telemetria(mac_b, 0, "{\"temp_c\":23.4}", false);
+        ui_bridge_on_mesh_telemetria(mac_c, 0, "{\"presencia\":true,\"led\":0}", false);
+        vTaskDelay(pdMS_TO_TICKS(2000));
+    }
+}
+
 static void tarea_boton_local(void *arg)
 {
 	gpio_config_t io_conf = {
@@ -188,6 +201,7 @@ void app_main(void) {
 	ESP_ERROR_CHECK(mesh_net_init());
 	ESP_ERROR_CHECK(mesh_net_anunciar_aula());
 	ESP_ERROR_CHECK(ui_bridge_init());
+	xTaskCreate(tarea_demo_nodos, "demo_nodos", 4096, NULL, 3, NULL);
 	ui_bridge_actualizar_red(!mesh_isla_esta_activa(), mesh_isla_esta_activa(), mesh_isla_get_canal(), mesh_net_get_aula());
 
 	ESP_ERROR_CHECK(mesh_hojas_init(mesh_net_get_aula(), ui_bridge_on_mesh_evento_hoja, ui_bridge_on_mesh_telemetria));
