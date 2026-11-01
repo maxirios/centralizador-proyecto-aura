@@ -1,5 +1,6 @@
 #include "ui_view_test.h"
 #include <stdio.h>
+#include <math.h>
 #include "esp_log.h"
 #include "lvgl.h"
 #include "ui_port.h"
@@ -111,9 +112,12 @@ void ui_view_test_actualizar(void)
 
                 lv_obj_t *lbl_tele = lv_label_create(card);
                 if (n->tiene_telemetria) {
-                    char buf_tele[64];
-                    snprintf(buf_tele, sizeof(buf_tele), "Temp: %.1f C   Hum: %.1f %%\nCO2: %.0f ppm",
-                             n->temp, n->hum, n->co2);
+                    char buf_tele[96] = "";
+                    size_t len = 0;
+                    if (!isnan(n->temp)) len += snprintf(buf_tele + len, sizeof(buf_tele) - len, "Temp: %.1f C   ", n->temp);
+                    if (!isnan(n->hum)) len += snprintf(buf_tele + len, sizeof(buf_tele) - len, "Hum: %.1f %%   ", n->hum);
+                    if (!isnan(n->co2)) len += snprintf(buf_tele + len, sizeof(buf_tele) - len, "CO2: %.0f ppm", n->co2);
+                    if (len == 0) snprintf(buf_tele, sizeof(buf_tele), "Sin medidas");
                     lv_label_set_text(lbl_tele, buf_tele);
                 } else {
                     lv_label_set_text(lbl_tele, "Registrada (esperando mediciones)");

@@ -1,6 +1,7 @@
 #include "ui_bridge.h"
 #include <string.h>
 #include <stdio.h>
+#include <math.h>
 #include "esp_log.h"
 #include "cJSON.h"
 #include "freertos/semphr.h"
@@ -11,6 +12,22 @@ static ui_estado_aula_t s_estado;
 static SemaphoreHandle_t s_lock = NULL;
 static ui_notif_cb_t s_notif_cb = NULL;
 static void *s_user_data = NULL;
+
+static const char *const CLAVES_TEMP[] = { "temp_c", "temp", "temperatura" };
+static const char *const CLAVES_HUM[]  = { "hum_pct", "hum", "humedad" };
+static const char *const CLAVES_CO2[]  = { "co2_ppm", "co2" };
+
+static bool leer_medida(const cJSON *root, const char *const *claves, size_t cant, float *out)
+{
+    for (size_t i = 0; i < cant; i++) {
+        const cJSON *it = cJSON_GetObjectItemCaseSensitive(root, claves[i]);
+        if (cJSON_IsNumber(it)) {
+            *out = (float)it->valuedouble;
+            return true;
+        }
+    }
+    return false;
+}
 
 static ui_nodo_t *buscar_o_crear_nodo(const uint8_t mac[6])
 {
@@ -24,6 +41,9 @@ static ui_nodo_t *buscar_o_crear_nodo(const uint8_t mac[6])
     }
     ui_nodo_t *n = &s_estado.nodos[s_estado.cant_nodos++];
     memset(n, 0, sizeof(*n));
+    n->temp = NAN;
+    n->hum = NAN;
+    n->co2 = NAN;
     memcpy(n->mac, mac, 6);
     aura_hw_id_de_mac(mac, n->hw_id);
     n->conectado = true;
@@ -145,18 +165,11 @@ void ui_bridge_on_mesh_telemetria(const uint8_t mac[6], uint32_t ts, const char 
 
     cJSON *root = cJSON_Parse(values_json);
     if (root) {
-        cJSON *it = cJSON_GetObjectItemCaseSensitive(root, "temp");
-        if (!it) it = cJSON_GetObjectItemCaseSensitive(root, "temperatura");
-        if (cJSON_IsNumber(it)) n->temp = (float)it->valuedouble;
+        leer_medida(root, CLAVES_TEMP, sizeof(CLAVES_TEMP) / sizeof(CLAVES_TEMP[0]), &n->temp);
+        leer_medida(root, CLAVES_HUM, sizeof(CLAVES_HUM) / sizeof(CLAVES_HUM[0]), &n->hum);
+        leer_medida(root, CLAVES_CO2, sizeof(CLAVES_CO2) / sizeof(CLAVES_CO2[0]), &n->co2);
 
-        it = cJSON_GetObjectItemCaseSensitive(root, "hum");
-        if (!it) it = cJSON_GetObjectItemCaseSensitive(root, "humedad");
-        if (cJSON_IsNumber(it)) n->hum = (float)it->valuedouble;
-
-        it = cJSON_GetObjectItemCaseSensitive(root, "co2");
-        if (cJSON_IsNumber(it)) n->co2 = (float)it->valuedouble;
-
-        it = cJSON_GetObjectItemCaseSensitive(root, "led");
+        cJSON *it = cJSON_GetObjectItemCaseSensitive(root, "led");
         if (!it) it = cJSON_GetObjectItemCaseSensitive(root, "rele");
         if (!it) it = cJSON_GetObjectItemCaseSensitive(root, "actuador");
         if (it) {

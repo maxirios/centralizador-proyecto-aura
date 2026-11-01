@@ -20,9 +20,9 @@ typedef struct {
     bool conectado;
     bool tiene_telemetria;
     uint32_t ts_ultimo;
-    float temp;
-    float hum;
-    float co2;
+    float temp;     // NAN si el nodo no reporta la medida
+    float hum;      // NAN si el nodo no reporta la medida
+    float co2;      // NAN si el nodo no reporta la medida
     bool tiene_actuador;
     bool actuador_estado;
     char raw_values[AURA_VALUES_MAX + 1];
