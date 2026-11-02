@@ -19,7 +19,7 @@
 #include "bsp_touch.h"
 #include "ui_bridge.h"
 #include "ui_port.h"
-#include "ui_view_test.h"
+#include "ui_dashboard.h"
 #include "driver/gpio.h"
 
 #define PIN_BOTON GPIO_NUM_0
@@ -214,7 +214,7 @@ void app_main(void) {
 		ESP_LOGI(TAG, "BSP Display RGB inicializado con exito");
 		esp_err_t err_ui = ui_port_init();
 		if (err_ui == ESP_OK) {
-			ui_view_test_create();
+			ui_dashboard_create();
 		} else {
 			ESP_LOGE(TAG, "Fallo al inicializar ui_port (%s)", esp_err_to_name(err_ui));
 		}
