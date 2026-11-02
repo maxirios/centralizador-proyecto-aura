@@ -6,10 +6,10 @@
 extern "C" {
 #endif
 
-// Crea la vista de validacion de telemetria y control tactil en la pantalla activa
+// Crea el dashboard (header de red + pestañas Dashboard, Dispositivos, Config y Acerca de)
 esp_err_t ui_dashboard_create(void);
 
-// Actualiza contenido de widgets con el estado actual de ui_bridge
+// Redibuja resumen, control y tarjetas con el estado actual de ui_bridge (llamar con el lock de LVGL)
 void ui_dashboard_actualizar(void);
 
 #ifdef __cplusplus
