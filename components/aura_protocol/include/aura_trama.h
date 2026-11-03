@@ -41,7 +41,10 @@ enum {
                                      lo reintenta: los eventos no se pierden en un corte. */
     AURA_TIPO_REPORTAR     = 12,  /* raíz -> nodo: volvió el broker; mandá tu reporte y lo
                                      pendiente ya (sin payload) */
-    AURA_TIPO_ESTADO       = AURA_TIPO_REPORTE, /* alias: reporte de estado y configuración */
+    AURA_TIPO_ESTADO       = 13,  /* hoja -> su concentrador: último valor medido, para la
+                                     pantalla y el mando local. NO se reenvía a la raíz (AURA lo
+                                     recibe por la cola, como TELEMETRIA). Payload: ts (uint32 LE,
+                                     0 = sin hora) | JSON de values */
 };
 
 typedef struct __attribute__((packed)) {

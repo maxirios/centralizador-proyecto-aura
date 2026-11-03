@@ -1,0 +1,4 @@
+dependencies:
+  espressif/cjson: "*"
+  lvgl/lvgl: "^9.2.2"
+  espressif/esp_lvgl_port: "^2.4.0"

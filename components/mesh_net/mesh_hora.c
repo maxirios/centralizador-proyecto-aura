@@ -116,8 +116,13 @@ esp_err_t mesh_hora_init(mesh_hora_enviar_cb_t callback)
 
 bool mesh_hora_procesar_trama(const uint8_t de_mac[6], const aura_trama_t *trama)
 {
-    if (!trama || trama->tipo != AURA_TIPO_HORA) {
+    if (!trama || !de_mac || trama->tipo != AURA_TIPO_HORA) {
         return false;
+    }
+
+    uint8_t mi_mac[6];
+    if (esp_read_mac(mi_mac, ESP_MAC_WIFI_STA) == ESP_OK && memcmp(de_mac, mi_mac, 6) == 0) {
+        return true;
     }
 
     if (trama->largo == sizeof(uint64_t)) {

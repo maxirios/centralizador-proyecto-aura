@@ -8,13 +8,14 @@ const char *aura_tipo_a_str(uint8_t tipo)
         case AURA_TIPO_ACK:          return "ACK";
         case AURA_TIPO_CONFIRMACION: return "CONFIRMACION";
         case AURA_TIPO_RESULTADO:    return "RESULTADO";
-        case AURA_TIPO_REPORTE:      return "REPORTE/ESTADO";
+        case AURA_TIPO_REPORTE:      return "REPORTE";
         case AURA_TIPO_ALERTA:       return "ALERTA";
         case AURA_TIPO_PING:         return "PING";
         case AURA_TIPO_HORA:         return "HORA";
         case AURA_TIPO_LOTE:         return "LOTE";
         case AURA_TIPO_EVENTO_OK:    return "EVENTO_OK";
         case AURA_TIPO_REPORTAR:     return "REPORTAR";
+        case AURA_TIPO_ESTADO:       return "ESTADO";
         default:                     return "DESCONOCIDO";
     }
 }

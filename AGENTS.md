@@ -19,6 +19,12 @@ Este repositorio contiene el firmware del **Centralizador** del Proyecto Aura: u
 | Flashear y abrir monitor serie | `idf.py -p /dev/ttyACM0 flash monitor` |
 | Limpieza estándar | `idf.py clean` |
 
+## Repositorios y Documentación de Referencia
+| Referencia / Propósito | Repositorio / Enlace | Descripción |
+| :--- | :--- | :--- |
+| Red Mesh y Protocolo AURA | [aura-firmware (UNRaf)](https://github.com/Universidad-Nacional-de-Rafaela/aura-firmware) | Repo oficial de UNRaf: contratos de red AURA, lotes, hora, comandos y telemetría. |
+| Hardware y Drivers BSP | [ESP32-S3-Touch-LCD-7 (Waveshare)](https://github.com/waveshareteam/ESP32-S3-Touch-LCD-7) | Repo oficial del fabricante: driver ST7262, reset GT911, control CH422G y LVGL v9. |
+
 ## Reglas Críticas de Arquitectura y Seguridad
 1. **Configuración inmutable a mano:** Nunca edites `sdkconfig` directamente. Todo cambio persistente va en `sdkconfig.defaults`.
 2. **Secretos fuera de Git:** Parámetros sensibles de red Wi-Fi van en `sdkconfig.defaults.local` (en `.gitignore`).
@@ -26,6 +32,7 @@ Este repositorio contiene el firmware del **Centralizador** del Proyecto Aura: u
 4. **Concurrencia FreeRTOS + LVGL:** La rutina `lv_timer_handler()` corre en una tarea FreeRTOS dedicada; toda llamada que interactúe con la UI debe usar los bloqueos de `esp_lvgl_port_lock()` / `esp_lvgl_port_unlock()`.
 5. **Modularidad en `components/`:** El código de drivers, lógica de red y pantallas debe desacoplarse en componentes locales (`components/bsp_display`, `components/mesh_net`, `components/ui`).
 6. **Pull Requests y Evidencia:** Toda PR con cambios en microcontroladores debe seguir la estructura y formato de pruebas de terminal definido en `docs/evidencia-pruebas.md`. Si el cambio altera el comportamiento visual físico (LEDs, pantallas o UI), consultar al usuario para dejar una sección de evidencia visual (foto o video arrastrado desde GitHub).
+7. **Comentarios y Estilo Conciso:** Evitar tags Doxygen verbosos (`@brief`, `@param`, `@return`) y sintaxis retrospectiva `/**<` (solo requeridos para contribuir a APIs públicas de Espressif). Usar comentarios directos de 1-2 líneas simples (`// ...`) enfocados en restricciones de hardware, unidades y concurrencia.
 
 ## Enrutador de Skills Especializadas (Context Pointers)
 Antes de implementar código o resolver problemas, consulta el archivo correspondiente:
