@@ -18,6 +18,12 @@
       "sourceType": "github",
       "skillPath": "esp32-firmware-engineer/SKILL.md",
       "computedHash": "3df8fc9d1ba783e4f09c59cf728cfb73cecfca89eece4a3b5b7d7e3e62068b6e"
+    },
+    "eezstudio": {
+      "source": "trailcurrentoss/TrailCurrentClaudeSkills",
+      "sourceType": "github",
+      "skillPath": "eezstudio/SKILL.md",
+      "computedHash": "a7b6df449f19384c026552d3ed91b8a0e8f01778bb9c75bb7befce7d57a42223"
     }
   }
 }

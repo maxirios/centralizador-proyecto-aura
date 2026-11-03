@@ -18,6 +18,8 @@ Este repositorio contiene el firmware del **Centralizador** del Proyecto Aura: u
 | Reconfigurar CMake/Kconfig | `idf.py reconfigure` |
 | Flashear y abrir monitor serie | `idf.py -p /dev/ttyACM0 flash monitor` |
 | Limpieza estándar | `idf.py clean` |
+| Validar proyecto EEZ Studio (Gate 2) | `python3 .agents/skills/eezstudio/verify_project.py GUI/aura.eez-project` |
+| Previsualizar páginas EEZ Studio | `python3 .agents/skills/eezstudio/render_pages.py GUI/aura.eez-project tmp/preview` |
 
 ## Repositorios y Documentación de Referencia
 | Referencia / Propósito | Repositorio / Enlace | Descripción |
@@ -33,12 +35,14 @@ Este repositorio contiene el firmware del **Centralizador** del Proyecto Aura: u
 5. **Modularidad en `components/`:** El código de drivers, lógica de red y pantallas debe desacoplarse en componentes locales (`components/bsp_display`, `components/mesh_net`, `components/ui`).
 6. **Pull Requests y Evidencia:** Toda PR con cambios en microcontroladores debe seguir la estructura y formato de pruebas de terminal definido en `docs/evidencia-pruebas.md`. Si el cambio altera el comportamiento visual físico (LEDs, pantallas o UI), consultar al usuario para dejar una sección de evidencia visual (foto o video arrastrado desde GitHub).
 7. **Comentarios y Estilo Conciso:** Evitar tags Doxygen verbosos (`@brief`, `@param`, `@return`) y sintaxis retrospectiva `/**<` (solo requeridos para contribuir a APIs públicas de Espressif). Usar comentarios directos de 1-2 líneas simples (`// ...`) enfocados en restricciones de hardware, unidades y concurrencia.
+8. **Fuente de verdad de UI (EEZ Studio):** `GUI/aura.eez-project` es la única fuente de verdad visual. Los archivos exportados en `main/ui/` son de solo lectura (se regeneran con `F7` en EEZ Studio). Prohibida la divergencia canvas-dispositivo (no alterar posición/tamaño/estilo de `objects.*` en código C).
 
 ## Enrutador de Skills Especializadas (Context Pointers)
 Antes de implementar código o resolver problemas, consulta el archivo correspondiente:
 
 | Tarea / Contexto | Skill a Consultar | Ruta del Manual |
 | :--- | :--- | :--- |
+| Diseño y edición de pantallas, estilos, temas y widgets en `.eez-project` | **EEZ Studio** | `.agents/skills/eezstudio/SKILL.md` |
 | Configuración de target, build, flash, logs o panics | **ESP-IDF Core** | `.agents/skills/esp-idf/SKILL.md` |
 | Creación de nuevos módulos y dependencias en `components/` | **ESP-IDF Components** | `.agents/skills/esp-idf-components/SKILL.md` |
 | Patrones FreeRTOS, buffers PSRAM y plantillas LVGL v9 | **ESP32 Firmware Engineer** | `.agents/skills/esp32-firmware-engineer/SKILL.md` |
