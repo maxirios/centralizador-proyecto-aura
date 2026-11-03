@@ -11,6 +11,7 @@
 #include "aura_protocol.h"
 #include "mesh_net.h"
 #include "mesh_lote.h"
+#include "mesh_hora.h"
 
 #define ROUTER_SSID CONFIG_ROUTER_SSID
 #define ROUTER_PASS CONFIG_ROUTER_PASS
@@ -31,9 +32,38 @@ static bool enviar_a_raiz_cb(const uint8_t *data, size_t len)
 	return (err == ESP_OK);
 }
 
+static bool enviar_trama_mesh_cb(const uint8_t *mac, const uint8_t *data, size_t len)
+{
+	mesh_data_t m_data = {
+		.data = (uint8_t *)data,
+		.size = len,
+		.proto = MESH_PROTO_BIN,
+		.tos = MESH_TOS_P2P,
+	};
+	mesh_addr_t dest;
+	mesh_addr_t *p_dest = NULL;
+	if (mac != NULL) {
+		memcpy(dest.addr, mac, 6);
+		p_dest = &dest;
+	}
+	esp_err_t err = esp_mesh_send(p_dest, &m_data, MESH_DATA_P2P, NULL, 0);
+	if (mac != NULL) {
+		ESP_LOGI(TAG, "Trama enviada a " MACSTR " (%u B) -> %s",
+		         MAC2STR(mac), (unsigned)len, esp_err_to_name(err));
+	} else {
+		ESP_LOGI(TAG, "Trama enviada a raiz (%u B) -> %s",
+		         (unsigned)len, esp_err_to_name(err));
+	}
+	return (err == ESP_OK);
+}
+
 static void on_mesh_event(void *arg, esp_event_base_t base, int32_t id, void *data) {
-	if (id == MESH_EVENT_PARENT_CONNECTED && esp_mesh_is_root()) {
-		esp_netif_dhcpc_start(netif_sta);
+	if (id == MESH_EVENT_PARENT_CONNECTED) {
+		if (esp_mesh_is_root()) {
+			esp_netif_dhcpc_start(netif_sta);
+		} else {
+			mesh_hora_pedir_sincronizacion();
+		}
 	}
 }
 
@@ -65,6 +95,7 @@ void app_main(void) {
 	ESP_ERROR_CHECK(mesh_net_init());
 	ESP_ERROR_CHECK(mesh_net_anunciar_aula());
 	ESP_ERROR_CHECK(mesh_lote_init(enviar_a_raiz_cb));
+	ESP_ERROR_CHECK(mesh_hora_init(enviar_trama_mesh_cb));
 
 	uint8_t rx_buf[AURA_TRAMA_MAX];
 	while (true) {
@@ -75,6 +106,11 @@ void app_main(void) {
 			aura_validacion_t v = aura_trama_validar(rx_buf, data.size);
 			if (v == AURA_TRAMA_OK) {
 				const aura_trama_t *t = (const aura_trama_t *)rx_buf;
+
+				if (t->tipo == AURA_TIPO_HORA && mesh_hora_procesar_trama(from.addr, t)) {
+					continue;
+				}
+
 				bool prioritario = (t->tipo == AURA_TIPO_ALERTA ||
 				                    t->tipo == AURA_TIPO_RESULTADO ||
 				                    t->tipo == AURA_TIPO_REPORTE);
@@ -88,4 +124,3 @@ void app_main(void) {
 		}
 	}
 }
-
