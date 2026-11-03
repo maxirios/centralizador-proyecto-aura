@@ -47,6 +47,7 @@ RUNTIME_OVERRIDDEN = {
 
 # ---- LVGL built-in Montserrat sizes; mapped to a fallback TTF on disk ------
 LVGL_MONTSERRAT_FALLBACK_CANDIDATES = [
+    "/usr/share/fonts/TTF/DejaVuSans.ttf",
     "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
     "/usr/share/fonts/dejavu/DejaVuSans.ttf",
     "/Library/Fonts/Arial.ttf",
