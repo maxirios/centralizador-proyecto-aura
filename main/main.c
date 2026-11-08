@@ -116,36 +116,40 @@ static int clamp_int(int v, int lo, int hi)
 }
 
 #define MAX_TICKER_ITEMS     28
+#define TICKER_ITEM_LEN      32
 #define TICKER_VISIBLE_CHIPS 4
 
-static int extraer_items_nodo_ticker(const ui_nodo_t *n, char items[][64], int count, int max_items)
+static char s_ticker_items[MAX_TICKER_ITEMS][TICKER_ITEM_LEN];
+static char s_dev_items[MAX_TICKER_ITEMS][TICKER_ITEM_LEN];
+
+static int extraer_items_nodo_ticker(const ui_nodo_t *n, char items[][TICKER_ITEM_LEN], int count, int max_items)
 {
     if (!n) return count;
     if (!isnan(n->temp) && count < max_items) {
-        snprintf(items[count++], 64, "Temp: %.1f°C", n->temp);
+        snprintf(items[count++], TICKER_ITEM_LEN, "Temp: %.1f°C", n->temp);
     }
     if (!isnan(n->hum) && count < max_items) {
-        snprintf(items[count++], 64, "Hum: %.0f%%", n->hum);
+        snprintf(items[count++], TICKER_ITEM_LEN, "Hum: %.0f%%", n->hum);
     }
     if (!isnan(n->luz_ventana) && count < max_items) {
-        snprintf(items[count++], 64, "Vent: %.0flx", n->luz_ventana);
+        snprintf(items[count++], TICKER_ITEM_LEN, "Vent: %.0flx", n->luz_ventana);
     }
     if (!isnan(n->luz_aula) && count < max_items) {
-        snprintf(items[count++], 64, "Aula: %.0flx", n->luz_aula);
+        snprintf(items[count++], TICKER_ITEM_LEN, "Aula: %.0flx", n->luz_aula);
     }
     if (!isnan(n->co2) && count < max_items) {
-        snprintf(items[count++], 64, "CO2: %.0fppm", n->co2);
+        snprintf(items[count++], TICKER_ITEM_LEN, "CO2: %.0fppm", n->co2);
     }
     if (n->presencia >= 0 && count < max_items) {
-        snprintf(items[count++], 64, "Pres: %d", n->presencia ? 1 : 0);
+        snprintf(items[count++], TICKER_ITEM_LEN, "Pres: %d", n->presencia ? 1 : 0);
     }
     if (n->tiene_actuador && count < max_items) {
-        snprintf(items[count++], 64, "Rele: %d", n->actuador_estado ? 1 : 0);
+        snprintf(items[count++], TICKER_ITEM_LEN, "Rele: %d", n->actuador_estado ? 1 : 0);
     }
     return count;
 }
 
-static int extraer_items_ticker(const ui_estado_aula_t *snap, char items[][64], int max_items)
+static int extraer_items_ticker(const ui_estado_aula_t *snap, char items[][TICKER_ITEM_LEN], int max_items)
 {
     int count = 0;
     for (uint8_t i = 0; i < snap->cant_nodos && count < max_items; i++) {
@@ -172,10 +176,9 @@ void ui_ticker_step(lv_obj_t *target_btn, int delta)
         dev_idx = 3;
     }
 
-    char items[MAX_TICKER_ITEMS][64];
     if (dev_idx >= 0) {
         if (dev_idx >= snap.cant_nodos) return;
-        int total = extraer_items_nodo_ticker(&snap.nodos[dev_idx], items, 0, MAX_TICKER_ITEMS);
+        int total = extraer_items_nodo_ticker(&snap.nodos[dev_idx], s_dev_items, 0, MAX_TICKER_ITEMS);
         int max_idx = (total > TICKER_VISIBLE_CHIPS) ? (total - TICKER_VISIBLE_CHIPS) : 0;
         int next_idx = clamp_int(s_dev_ticker_idx[dev_idx] + delta, 0, max_idx);
         if (next_idx != s_dev_ticker_idx[dev_idx]) {
@@ -186,7 +189,7 @@ void ui_ticker_step(lv_obj_t *target_btn, int delta)
         return;
     }
 
-    int total = extraer_items_ticker(&snap, items, MAX_TICKER_ITEMS);
+    int total = extraer_items_ticker(&snap, s_ticker_items, MAX_TICKER_ITEMS);
     int max_idx = (total > TICKER_VISIBLE_CHIPS) ? (total - TICKER_VISIBLE_CHIPS) : 0;
 
     int next_idx = clamp_int(s_ticker_idx + delta, 0, max_idx);
@@ -273,7 +276,7 @@ typedef struct {
 } ticker_bar_widgets_t;
 
 static void actualizar_ticker_instancia(const ticker_bar_widgets_t *tw,
-                                        char items[][64], int total, int idx, int max_idx)
+                                        char items[][TICKER_ITEM_LEN], int total, int idx, int max_idx)
 {
     if (!tw) return;
 
@@ -512,12 +515,11 @@ static void refresco_eez_ui_timer_cb(lv_timer_t *t)
     if (objects.about_header__header_mesh_lbl)          lv_label_set_text(objects.about_header__header_mesh_lbl, mesh_txt);
 
     // Actualizar Ticker en ambas páginas del Tablero (4 chips intercalados + barra de desplazamiento + topes)
-    char ticker_items[MAX_TICKER_ITEMS][64];
-    int total_items = extraer_items_ticker(&snap, ticker_items, MAX_TICKER_ITEMS);
+    int total_items = extraer_items_ticker(&snap, s_ticker_items, MAX_TICKER_ITEMS);
     int max_idx = (total_items > TICKER_VISIBLE_CHIPS) ? (total_items - TICKER_VISIBLE_CHIPS) : 0;
     s_ticker_idx = clamp_int(s_ticker_idx, 0, max_idx);
 
-    ticker_bar_widgets_t tw_act = {
+    const ticker_bar_widgets_t tw_act = {
         .prev_btn = objects.dashboard_act_ticker__ticker_prev_btn,
         .prev_lbl = objects.dashboard_act_ticker__ticker_prev_lbl,
         .chips = {
@@ -536,7 +538,7 @@ static void refresco_eez_ui_timer_cb(lv_timer_t *t)
         .next_lbl = objects.dashboard_act_ticker__ticker_next_lbl,
         .prog_bar = objects.dashboard_act_ticker__ticker_prog_bar,
     };
-    ticker_bar_widgets_t tw_sens = {
+    const ticker_bar_widgets_t tw_sens = {
         .prev_btn = objects.dashboard_sens_ticker__ticker_prev_btn,
         .prev_lbl = objects.dashboard_sens_ticker__ticker_prev_lbl,
         .chips = {
@@ -555,8 +557,8 @@ static void refresco_eez_ui_timer_cb(lv_timer_t *t)
         .next_lbl = objects.dashboard_sens_ticker__ticker_next_lbl,
         .prog_bar = objects.dashboard_sens_ticker__ticker_prog_bar,
     };
-    actualizar_ticker_instancia(&tw_act, ticker_items, total_items, s_ticker_idx, max_idx);
-    actualizar_ticker_instancia(&tw_sens, ticker_items, total_items, s_ticker_idx, max_idx);
+    actualizar_ticker_instancia(&tw_act, s_ticker_items, total_items, s_ticker_idx, max_idx);
+    actualizar_ticker_instancia(&tw_sens, s_ticker_items, total_items, s_ticker_idx, max_idx);
 
     if (objects.dash_nodes_sec_tag) {
         char tag_txt[32];
@@ -737,11 +739,10 @@ static void refresco_eez_ui_timer_cb(lv_timer_t *t)
                 if (dev_ids[i]) lv_label_set_text(dev_ids[i], id_str);
                 aplicar_badge_estado(dev_bdgs[i], dev_blbls[i], n->conectado, n->conectado ? "EN LINEA" : "SIN CONEXION");
 
-                char dev_items[MAX_TICKER_ITEMS][64];
-                int dev_total = extraer_items_nodo_ticker(n, dev_items, 0, MAX_TICKER_ITEMS);
+                int dev_total = extraer_items_nodo_ticker(n, s_dev_items, 0, MAX_TICKER_ITEMS);
                 int dev_max_idx = (dev_total > TICKER_VISIBLE_CHIPS) ? (dev_total - TICKER_VISIBLE_CHIPS) : 0;
                 s_dev_ticker_idx[i] = clamp_int(s_dev_ticker_idx[i], 0, dev_max_idx);
-                actualizar_ticker_instancia(&tw_devs[i], dev_items, dev_total, s_dev_ticker_idx[i], dev_max_idx);
+                actualizar_ticker_instancia(&tw_devs[i], s_dev_items, dev_total, s_dev_ticker_idx[i], dev_max_idx);
             } else {
                 lv_obj_add_flag(dev_cards[i], LV_OBJ_FLAG_HIDDEN);
             }
@@ -923,7 +924,7 @@ void app_main(void)
         xTaskCreate(tarea_boton_local, "btn_local", 2048, NULL, 3, NULL);
     }
 
-    uint8_t rx_buf[AURA_TRAMA_MAX];
+    static uint8_t rx_buf[AURA_TRAMA_MAX];
     while (true) {
         mesh_addr_t from;
         mesh_data_t data = { .data = rx_buf, .size = sizeof(rx_buf) };
