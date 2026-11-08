@@ -184,7 +184,18 @@ void ui_bridge_on_mesh_evento_hoja(const uint8_t mac[6], bool ausente, const cha
         return;
     }
 
-    ui_nodo_t *n = buscar_o_crear_nodo(mac);
+    ui_nodo_t *n = NULL;
+    if (ausente) {
+        for (int i = 0; i < s_estado.cant_nodos; i++) {
+            if (memcmp(s_estado.nodos[i].mac, mac, 6) == 0) {
+                n = &s_estado.nodos[i];
+                break;
+            }
+        }
+    } else {
+        n = buscar_o_crear_nodo(mac);
+    }
+
     ui_nodo_t snap;
     if (n) {
         n->conectado = !ausente;
