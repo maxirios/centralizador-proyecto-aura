@@ -1,4 +1,6 @@
 #include <string.h>
+#include <stdio.h>
+#include <math.h>
 #include "esp_log.h"
 #include "esp_wifi.h"
 #include "esp_netif.h"
@@ -22,7 +24,8 @@
 #include "ui_dashboard.h"
 #include "ui.h"
 #include "screens.h"
-#include <math.h>
+#include "styles.h"
+#include "relay_ctrl.h"
 #include "driver/gpio.h"
 
 #define PIN_BOTON GPIO_NUM_0
@@ -35,290 +38,624 @@ static esp_netif_t *netif_sta;
 
 static bool enviar_a_raiz_cb(const uint8_t *data, size_t len)
 {
-	mesh_data_t m_data = {
-		.data = (uint8_t *)data,
-		.size = len,
-		.proto = MESH_PROTO_BIN,
-		.tos = MESH_TOS_P2P,
-	};
-	esp_err_t err = esp_mesh_send(NULL, &m_data, MESH_DATA_P2P, NULL, 0);
-	ESP_LOGI(TAG, "Lote AURA enviado a raiz (%u bytes) -> %s", (unsigned)len, esp_err_to_name(err));
-	return (err == ESP_OK);
+    mesh_data_t m_data = {
+        .data = (uint8_t *)data,
+        .size = len,
+        .proto = MESH_PROTO_BIN,
+        .tos = MESH_TOS_P2P,
+    };
+    esp_err_t err = esp_mesh_send(NULL, &m_data, MESH_DATA_P2P, NULL, 0);
+    ESP_LOGI(TAG, "Lote AURA enviado a raiz (%u bytes) -> %s", (unsigned)len, esp_err_to_name(err));
+    return (err == ESP_OK);
 }
 
 static bool enviar_trama_mesh_cb(const uint8_t *mac, const uint8_t *data, size_t len)
 {
-	mesh_data_t m_data = {
-		.data = (uint8_t *)data,
-		.size = len,
-		.proto = MESH_PROTO_BIN,
-		.tos = MESH_TOS_P2P,
-	};
-	mesh_addr_t dest;
-	mesh_addr_t *p_dest = NULL;
-	if (mac != NULL) {
-		memcpy(dest.addr, mac, 6);
-		p_dest = &dest;
-	}
-	esp_err_t err = esp_mesh_send(p_dest, &m_data, MESH_DATA_P2P, NULL, 0);
-	if (mac != NULL) {
-		ESP_LOGI(TAG, "Trama enviada a " MACSTR " (%u B) -> %s",
-		         MAC2STR(mac), (unsigned)len, esp_err_to_name(err));
-	} else {
-		ESP_LOGI(TAG, "Trama enviada a raiz (%u B) -> %s",
-		         (unsigned)len, esp_err_to_name(err));
-	}
-	return (err == ESP_OK);
+    mesh_data_t m_data = {
+        .data = (uint8_t *)data,
+        .size = len,
+        .proto = MESH_PROTO_BIN,
+        .tos = MESH_TOS_P2P,
+    };
+    mesh_addr_t dest;
+    mesh_addr_t *p_dest = NULL;
+    if (mac != NULL) {
+        memcpy(dest.addr, mac, 6);
+        p_dest = &dest;
+    }
+    esp_err_t err = esp_mesh_send(p_dest, &m_data, MESH_DATA_P2P, NULL, 0);
+    if (mac != NULL) {
+        ESP_LOGI(TAG, "Trama enviada a " MACSTR " (%u B) -> %s",
+                 MAC2STR(mac), (unsigned)len, esp_err_to_name(err));
+    } else {
+        ESP_LOGI(TAG, "Trama enviada a raiz (%u B) -> %s",
+                 (unsigned)len, esp_err_to_name(err));
+    }
+    return (err == ESP_OK);
 }
 
 static void on_control_resultado(const mesh_control_resultado_t *res)
 {
-	char hw[AURA_HW_ID_BYTES];
-	aura_hw_id_de_mac(res->de_mac, hw);
-	ESP_LOGI(TAG, "Confirmacion de ejecucion de %s: cid='%s' aplicado=%s motivo='%s'",
-	         hw, res->command_id, res->aplicado ? "SI" : "NO", res->motivo);
-	ui_bridge_on_control_resultado(res);
+    char hw[AURA_HW_ID_BYTES];
+    aura_hw_id_de_mac(res->de_mac, hw);
+    ESP_LOGI(TAG, "Confirmacion de ejecucion de %s: cid='%s' aplicado=%s motivo='%s'",
+             hw, res->command_id, res->aplicado ? "SI" : "NO", res->motivo);
+    ui_bridge_on_control_resultado(res);
 }
 
+#if CONFIG_AURA_ENABLE_DEMO_NODES
 static void tarea_demo_nodos(void *arg)
 {
-    static const uint8_t mac_a[6] = {0x02, 0x00, 0x00, 0x00, 0x00, 0x0A};
-    static const uint8_t mac_b[6] = {0x02, 0x00, 0x00, 0x00, 0x00, 0x0B};
-    static const uint8_t mac_c[6] = {0x02, 0x00, 0x00, 0x00, 0x00, 0x0C};
+    static const uint8_t mac_a[6] = {0xE0, 0x72, 0xA1, 0xD8, 0x48, 0xB0};
+    static const uint8_t mac_b[6] = {0x40, 0x4C, 0xCA, 0x58, 0xB2, 0x14};
     while (true) {
-        ui_bridge_on_mesh_telemetria(mac_a, 0, "{\"temp_c\":23.8,\"hum_pct\":51.2,\"co2_ppm\":640,\"led\":1}", false);
-        ui_bridge_on_mesh_telemetria(mac_b, 0, "{\"temp_c\":23.4}", false);
-        ui_bridge_on_mesh_telemetria(mac_c, 0, "{\"presencia\":true,\"led\":0}", false);
-        vTaskDelay(pdMS_TO_TICKS(2000));
+        ui_bridge_on_mesh_telemetria(
+            mac_a, 0,
+            "{\"values\":{\"presencia\":1,\"luz_ventana_lx\":340.0,\"luz_aula_lx\":420.0,"
+            "\"temp_c\":23.4,\"humedad_pct\":45.0,\"rele_canal1\":1},"
+            "\"adaptador\":\"mac-e072a1d848b0\"}",
+            false);
+        ui_bridge_on_mesh_telemetria(
+            mac_b, 0,
+            "{\"values\":{\"presencia\":0,\"luz_ventana_lx\":180.0,\"luz_aula_lx\":290.0,"
+            "\"temp_c\":24.1,\"humedad_pct\":48.0,\"rele_canal1\":0},"
+            "\"adaptador\":\"mac-404cca58b214\"}",
+            false);
+        vTaskDelay(pdMS_TO_TICKS(3000));
     }
 }
+#endif
 
 static volatile bool s_eez_ui_sucio = true;
 
 static void on_ui_bridge_notif(ui_evento_tipo_t evento, const void *datos, void *user_data)
 {
+    (void)evento;
+    (void)datos;
+    (void)user_data;
     s_eez_ui_sucio = true;
+}
+
+static int clamp_int(int v, int lo, int hi)
+{
+    if (v < lo) return lo;
+    if (v > hi) return hi;
+    return v;
+}
+
+static void aplicar_badge_estado(lv_obj_t *panel, lv_obj_t *lbl, bool online, const char *txt)
+{
+    if (!panel || !lbl) return;
+    lv_label_set_text(lbl, txt);
+    if (online) {
+        remove_style_panel_badge_offline(panel);
+        add_style_panel_badge_online(panel);
+        remove_style_label_badge_offline(lbl);
+        add_style_label_badge_online(lbl);
+    } else {
+        remove_style_panel_badge_online(panel);
+        add_style_panel_badge_offline(panel);
+        remove_style_label_badge_online(lbl);
+        add_style_label_badge_offline(lbl);
+    }
+}
+
+static void aplicar_btn_rele_estilo(lv_obj_t *btn, bool on)
+{
+    if (!btn) return;
+    if (on) {
+        remove_style_btn_relay_squircle_off(btn);
+        add_style_btn_relay_squircle_on(btn);
+    } else {
+        remove_style_btn_relay_squircle_on(btn);
+        add_style_btn_relay_squircle_off(btn);
+    }
+}
+
+static void init_local_relays_ui(void)
+{
+    uint8_t count = relay_ctrl_get_count();
+    if (objects.dash_relays_sub) {
+        char sub[32];
+        snprintf(sub, sizeof(sub), "%u CANALES GPIO", (unsigned)count);
+        lv_label_set_text(objects.dash_relays_sub, sub);
+    }
+
+    lv_obj_t *tiles[5] = {
+        objects.dash_relay_tile_1, objects.dash_relay_tile_2,
+        objects.dash_relay_tile_3, objects.dash_relay_tile_4,
+        objects.dash_relay_tile_5
+    };
+    lv_obj_t *btns[5] = {
+        objects.dash_relay_btn_1, objects.dash_relay_btn_2,
+        objects.dash_relay_btn_3, objects.dash_relay_btn_4,
+        objects.dash_relay_btn_5
+    };
+    lv_obj_t *lbls[5] = {
+        objects.dash_relay_lbl_1, objects.dash_relay_lbl_2,
+        objects.dash_relay_lbl_3, objects.dash_relay_lbl_4,
+        objects.dash_relay_lbl_5
+    };
+
+    for (uint8_t i = 0; i < 5; i++) {
+        if (!tiles[i]) continue;
+        if (i < count) {
+            lv_obj_clear_flag(tiles[i], LV_OBJ_FLAG_HIDDEN);
+            if (lbls[i]) {
+                lv_label_set_text(lbls[i], relay_ctrl_get_label(i));
+            }
+            aplicar_btn_rele_estilo(btns[i], relay_ctrl_get_state(i));
+        } else {
+            lv_obj_add_flag(tiles[i], LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+}
+
+typedef struct {
+    lv_obj_t *box;
+    lv_obj_t *title;
+    lv_obj_t *sub;
+    lv_obj_t *badge;
+    lv_obj_t *badge_lbl;
+    lv_obj_t *s1_val;
+    lv_obj_t *s1_bar;
+    lv_obj_t *s2_val;
+    lv_obj_t *s2_bar;
+    lv_obj_t *s3_val;
+    lv_obj_t *s3_bar;
+    lv_obj_t *s4_lbl;
+    lv_obj_t *s4_val;
+    lv_obj_t *s4_bar;
+    lv_obj_t *pres_badge;
+    lv_obj_t *pres_lbl;
+    lv_obj_t *act_title;
+    lv_obj_t *act_sub;
+    lv_obj_t *act_btn;
+} dash_node_widgets_t;
+
+static void poblar_dash_node_box(const dash_node_widgets_t *w, const ui_nodo_t *n)
+{
+    if (!w || !w->box || !n) return;
+    lv_obj_clear_flag(w->box, LV_OBJ_FLAG_HIDDEN);
+
+    const char *id_str = (n->adaptador[0] != '\0') ? n->adaptador : n->hw_id;
+    if (w->title) lv_label_set_text(w->title, id_str);
+
+    if (w->sub) {
+        char sub[64];
+        snprintf(sub, sizeof(sub), "Nodo Hoja ESP-MESH | HW: %s", n->hw_id);
+        lv_label_set_text(w->sub, sub);
+    }
+
+    aplicar_badge_estado(w->badge, w->badge_lbl, n->conectado, n->conectado ? "ONLINE" : "OFFLINE");
+
+    char buf[64];
+    if (!isnan(n->temp)) {
+        snprintf(buf, sizeof(buf), "%.1f °C", n->temp);
+        if (w->s1_val) lv_label_set_text(w->s1_val, buf);
+        if (w->s1_bar) lv_bar_set_value(w->s1_bar, clamp_int((int)n->temp, 0, 50), LV_ANIM_OFF);
+    } else {
+        if (w->s1_val) lv_label_set_text(w->s1_val, "--.- °C");
+        if (w->s1_bar) lv_bar_set_value(w->s1_bar, 0, LV_ANIM_OFF);
+    }
+
+    if (!isnan(n->hum)) {
+        snprintf(buf, sizeof(buf), "%.0f %%", n->hum);
+        if (w->s2_val) lv_label_set_text(w->s2_val, buf);
+        if (w->s2_bar) lv_bar_set_value(w->s2_bar, clamp_int((int)n->hum, 0, 100), LV_ANIM_OFF);
+    } else {
+        if (w->s2_val) lv_label_set_text(w->s2_val, "-- %");
+        if (w->s2_bar) lv_bar_set_value(w->s2_bar, 0, LV_ANIM_OFF);
+    }
+
+    if (!isnan(n->luz_ventana)) {
+        snprintf(buf, sizeof(buf), "%.0f lx", n->luz_ventana);
+        if (w->s3_val) lv_label_set_text(w->s3_val, buf);
+        if (w->s3_bar) lv_bar_set_value(w->s3_bar, clamp_int((int)n->luz_ventana, 0, 1000), LV_ANIM_OFF);
+    } else {
+        if (w->s3_val) lv_label_set_text(w->s3_val, "-- lx");
+        if (w->s3_bar) lv_bar_set_value(w->s3_bar, 0, LV_ANIM_OFF);
+    }
+
+    if (!isnan(n->luz_aula)) {
+        if (w->s4_lbl) lv_label_set_text(w->s4_lbl, "Luz Aula");
+        snprintf(buf, sizeof(buf), "%.0f lx", n->luz_aula);
+        if (w->s4_val) lv_label_set_text(w->s4_val, buf);
+        if (w->s4_bar) lv_bar_set_value(w->s4_bar, clamp_int((int)n->luz_aula, 0, 1000), LV_ANIM_OFF);
+    } else if (!isnan(n->co2)) {
+        if (w->s4_lbl) lv_label_set_text(w->s4_lbl, "CO2 Amb.");
+        snprintf(buf, sizeof(buf), "%.0f ppm", n->co2);
+        if (w->s4_val) lv_label_set_text(w->s4_val, buf);
+        int scaled = clamp_int((int)((n->co2 * 1000.0f) / 2000.0f), 0, 1000);
+        if (w->s4_bar) lv_bar_set_value(w->s4_bar, scaled, LV_ANIM_OFF);
+    } else {
+        if (w->s4_lbl) lv_label_set_text(w->s4_lbl, "Luz Aula");
+        if (w->s4_val) lv_label_set_text(w->s4_val, "-- lx");
+        if (w->s4_bar) lv_bar_set_value(w->s4_bar, 0, LV_ANIM_OFF);
+    }
+
+    if (n->presencia == 1) {
+        aplicar_badge_estado(w->pres_badge, w->pres_lbl, true, "DETECTADO");
+    } else if (n->presencia == 0) {
+        aplicar_badge_estado(w->pres_badge, w->pres_lbl, false, "LIBRE");
+    } else {
+        aplicar_badge_estado(w->pres_badge, w->pres_lbl, false, "SIN DATO");
+    }
+
+    if (w->act_title) {
+        if (n->tiene_actuador && n->actuador_key[0] != '\0') {
+            snprintf(buf, sizeof(buf), "ACTUADOR (%s)", n->actuador_key);
+            lv_label_set_text(w->act_title, buf);
+        } else {
+            lv_label_set_text(w->act_title, "ACTUADOR REMOTO");
+        }
+    }
+    if (w->act_sub) {
+        if (n->tiene_actuador) {
+            lv_label_set_text(w->act_sub, n->actuador_estado ? "Estado: ENCENDIDO (ON)" : "Estado: APAGADO (OFF)");
+        } else {
+            lv_label_set_text(w->act_sub, "Toque para conmutar");
+        }
+    }
+    aplicar_btn_rele_estilo(w->act_btn, n->actuador_estado);
 }
 
 static void refresco_eez_ui_timer_cb(lv_timer_t *t)
 {
+    (void)t;
     if (!s_eez_ui_sucio) return;
     s_eez_ui_sucio = false;
 
     static ui_estado_aula_t snap;
     if (ui_bridge_get_snapshot(&snap) != ESP_OK) return;
 
-    char mesh_txt[32];
-    snprintf(mesh_txt, sizeof(mesh_txt), "Mesh OK (%d)", snap.cant_nodos);
-    if (objects.dashboard_header__header_mesh_lbl) lv_label_set_text(objects.dashboard_header__header_mesh_lbl, mesh_txt);
-    if (objects.devices_header__header_mesh_lbl) lv_label_set_text(objects.devices_header__header_mesh_lbl, mesh_txt);
-    if (objects.config_header__header_mesh_lbl) lv_label_set_text(objects.config_header__header_mesh_lbl, mesh_txt);
-    if (objects.about_header__header_mesh_lbl) lv_label_set_text(objects.about_header__header_mesh_lbl, mesh_txt);
+    uint8_t online_cnt = 0;
+    uint8_t offline_cnt = 0;
+    for (uint8_t i = 0; i < snap.cant_nodos; i++) {
+        if (snap.nodos[i].conectado) online_cnt++;
+        else offline_cnt++;
+    }
 
-    if (snap.cant_nodos > 0) {
-        const ui_nodo_t *n = &snap.nodos[0];
-        char b[32];
-        if (!isnan(n->temp) && objects.dash_lbl_temp_val) {
-            snprintf(b, sizeof(b), "%.1f °C", n->temp);
-            lv_label_set_text(objects.dash_lbl_temp_val, b);
+    char mesh_txt[32];
+    if (snap.red.modo_isla) {
+        snprintf(mesh_txt, sizeof(mesh_txt), "Isla (%u)", (unsigned)online_cnt);
+    } else {
+        snprintf(mesh_txt, sizeof(mesh_txt), "Mesh (%u)", (unsigned)online_cnt);
+    }
+    if (objects.dashboard_header__header_mesh_lbl) lv_label_set_text(objects.dashboard_header__header_mesh_lbl, mesh_txt);
+    if (objects.devices_header__header_mesh_lbl)   lv_label_set_text(objects.devices_header__header_mesh_lbl, mesh_txt);
+    if (objects.config_header__header_mesh_lbl)    lv_label_set_text(objects.config_header__header_mesh_lbl, mesh_txt);
+    if (objects.about_header__header_mesh_lbl)     lv_label_set_text(objects.about_header__header_mesh_lbl, mesh_txt);
+
+    if (objects.dash_ticker_lbl) {
+        lv_label_set_text(objects.dash_ticker_lbl, snap.ultimo_ticker);
+    }
+
+    if (objects.dash_nodes_sec_tag) {
+        char tag_txt[32];
+        snprintf(tag_txt, sizeof(tag_txt), "%u EN LINEA", (unsigned)online_cnt);
+        lv_label_set_text(objects.dash_nodes_sec_tag, tag_txt);
+    }
+
+    dash_node_widgets_t w1 = {
+        .box = objects.dash_node1_box,
+        .title = objects.dash_n1_title,
+        .sub = objects.dash_n1_sub,
+        .badge = objects.dash_n1_badge,
+        .badge_lbl = objects.dash_n1_badge_lbl,
+        .s1_val = objects.dash_n1_s1_val, .s1_bar = objects.dash_n1_s1_bar,
+        .s2_val = objects.dash_n1_s2_val, .s2_bar = objects.dash_n1_s2_bar,
+        .s3_val = objects.dash_n1_s3_val, .s3_bar = objects.dash_n1_s3_bar,
+        .s4_lbl = objects.dash_n1_s4_lbl, .s4_val = objects.dash_n1_s4_val, .s4_bar = objects.dash_n1_s4_bar,
+        .pres_badge = objects.dash_n1_pres_badge, .pres_lbl = objects.dash_n1_pres_lbl,
+        .act_title = objects.dash_n1_act_title, .act_sub = objects.dash_n1_act_sub, .act_btn = objects.dash_n1_act_btn,
+    };
+    dash_node_widgets_t w2 = {
+        .box = objects.dash_node2_box,
+        .title = objects.dash_n2_title,
+        .sub = objects.dash_n2_sub,
+        .badge = objects.dash_n2_badge,
+        .badge_lbl = objects.dash_n2_badge_lbl,
+        .s1_val = objects.dash_n2_s1_val, .s1_bar = objects.dash_n2_s1_bar,
+        .s2_val = objects.dash_n2_s2_val, .s2_bar = objects.dash_n2_s2_bar,
+        .s3_val = objects.dash_n2_s3_val, .s3_bar = objects.dash_n2_s3_bar,
+        .s4_lbl = objects.dash_n2_s4_lbl, .s4_val = objects.dash_n2_s4_val, .s4_bar = objects.dash_n2_s4_bar,
+        .pres_badge = objects.dash_n2_pres_badge, .pres_lbl = objects.dash_n2_pres_lbl,
+        .act_title = objects.dash_n2_act_title, .act_sub = objects.dash_n2_act_sub, .act_btn = objects.dash_n2_act_btn,
+    };
+
+    if (snap.cant_nodos == 0) {
+        if (objects.dash_empty_card) lv_obj_clear_flag(objects.dash_empty_card, LV_OBJ_FLAG_HIDDEN);
+        if (objects.dash_node1_box)  lv_obj_add_flag(objects.dash_node1_box, LV_OBJ_FLAG_HIDDEN);
+        if (objects.dash_node2_box)  lv_obj_add_flag(objects.dash_node2_box, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        if (objects.dash_empty_card) lv_obj_add_flag(objects.dash_empty_card, LV_OBJ_FLAG_HIDDEN);
+        poblar_dash_node_box(&w1, &snap.nodos[0]);
+        if (snap.cant_nodos >= 2) {
+            poblar_dash_node_box(&w2, &snap.nodos[1]);
+        } else if (objects.dash_node2_box) {
+            lv_obj_add_flag(objects.dash_node2_box, LV_OBJ_FLAG_HIDDEN);
         }
-        if (!isnan(n->hum) && objects.dash_lbl_hum_val) {
-            snprintf(b, sizeof(b), "%.0f %%", n->hum);
-            lv_label_set_text(objects.dash_lbl_hum_val, b);
+    }
+
+    char strip_buf[32];
+    if (objects.dash_net_online_lbl) {
+        snprintf(strip_buf, sizeof(strip_buf), "En linea: %u", (unsigned)online_cnt);
+        lv_label_set_text(objects.dash_net_online_lbl, strip_buf);
+    }
+    if (objects.dash_net_offline_lbl) {
+        snprintf(strip_buf, sizeof(strip_buf), "Sin senal: %u", (unsigned)offline_cnt);
+        lv_label_set_text(objects.dash_net_offline_lbl, strip_buf);
+    }
+    if (objects.dash_net_gw_lbl) {
+        const char *gw = snap.red.modo_isla ? "Gateway: ISLA" :
+                         (snap.red.gateway_conectado ? "Gateway: OK" : "Gateway: BUSCANDO");
+        lv_label_set_text(objects.dash_net_gw_lbl, gw);
+    }
+
+    // Pantalla Dispositivos
+    if (objects.dev_sec_total) {
+        snprintf(strip_buf, sizeof(strip_buf), "%u Nodos Registrados", (unsigned)snap.cant_nodos);
+        lv_label_set_text(objects.dev_sec_total, strip_buf);
+    }
+
+    lv_obj_t *dev_cards[4] = { objects.dev_card_1, objects.dev_card_2, objects.dev_card_3, objects.dev_card_4 };
+    lv_obj_t *dev_ids[4]   = { objects.dev_c1_id, objects.dev_c2_id, objects.dev_c3_id, objects.dev_c4_id };
+    lv_obj_t *dev_bdgs[4]  = { objects.dev_c1_badge, objects.dev_c2_badge, objects.dev_c3_badge, objects.dev_c4_badge };
+    lv_obj_t *dev_blbls[4] = { objects.dev_c1_badge_lbl, objects.dev_c2_badge_lbl, objects.dev_c3_badge_lbl, objects.dev_c4_badge_lbl };
+    lv_obj_t *dev_vals[4]  = { objects.dev_c1_vals, objects.dev_c2_vals, objects.dev_c3_vals, objects.dev_c4_vals };
+    lv_obj_t *dev_acts[4]  = { objects.dev_c1_act, objects.dev_c2_act, objects.dev_c3_act, objects.dev_c4_act };
+    lv_obj_t *dev_metas[4] = { objects.dev_c1_meta, objects.dev_c2_meta, objects.dev_c3_meta, objects.dev_c4_meta };
+
+    if (snap.cant_nodos == 0) {
+        if (objects.dev_empty_card) lv_obj_clear_flag(objects.dev_empty_card, LV_OBJ_FLAG_HIDDEN);
+        for (int i = 0; i < 4; i++) {
+            if (dev_cards[i]) lv_obj_add_flag(dev_cards[i], LV_OBJ_FLAG_HIDDEN);
         }
-        if (!isnan(n->co2) && objects.dash_lbl_co2_val) {
-            snprintf(b, sizeof(b), "%d ppm", (int)n->co2);
-            lv_label_set_text(objects.dash_lbl_co2_val, b);
-            if (objects.dash_bar_co2) {
-                lv_bar_set_value(objects.dash_bar_co2, (int)n->co2, LV_ANIM_OFF);
+    } else {
+        if (objects.dev_empty_card) lv_obj_add_flag(objects.dev_empty_card, LV_OBJ_FLAG_HIDDEN);
+        for (int i = 0; i < 4; i++) {
+            if (!dev_cards[i]) continue;
+            if (i < snap.cant_nodos) {
+                const ui_nodo_t *n = &snap.nodos[i];
+                lv_obj_clear_flag(dev_cards[i], LV_OBJ_FLAG_HIDDEN);
+                const char *id_str = (n->adaptador[0] != '\0') ? n->adaptador : n->hw_id;
+                if (dev_ids[i]) lv_label_set_text(dev_ids[i], id_str);
+                aplicar_badge_estado(dev_bdgs[i], dev_blbls[i], n->conectado, n->conectado ? "ONLINE" : "OFFLINE");
+                if (dev_vals[i]) lv_label_set_text(dev_vals[i], n->ticker_line);
+                if (dev_acts[i]) {
+                    char act_buf[64];
+                    if (n->tiene_actuador) {
+                        snprintf(act_buf, sizeof(act_buf), "Actuador %s: %s",
+                                 n->actuador_key, n->actuador_estado ? "ON" : "OFF");
+                    } else {
+                        snprintf(act_buf, sizeof(act_buf), "Actuador: no reportado");
+                    }
+                    lv_label_set_text(dev_acts[i], act_buf);
+                }
+                if (dev_metas[i]) {
+                    char meta_buf[64];
+                    snprintf(meta_buf, sizeof(meta_buf), "MAC: " MACSTR, MAC2STR(n->mac));
+                    lv_label_set_text(dev_metas[i], meta_buf);
+                }
+            } else {
+                lv_obj_add_flag(dev_cards[i], LV_OBJ_FLAG_HIDDEN);
             }
         }
+    }
+
+    // Pantalla Config
+    if (objects.cfg_val_aula && snap.red.aula[0] != '\0') {
+        lv_label_set_text(objects.cfg_val_aula, snap.red.aula);
+    }
+    if (objects.cfg_val_chan) {
+        char ch_buf[48];
+        snprintf(ch_buf, sizeof(ch_buf), "Canal %u - Mesh ID MESH01", (unsigned)snap.red.canal);
+        lv_label_set_text(objects.cfg_val_chan, ch_buf);
+    }
+    if (objects.cfg_gw_badge && objects.cfg_gw_badge_lbl) {
+        bool gw_ok = snap.red.gateway_conectado && !snap.red.modo_isla;
+        const char *gw_txt = snap.red.modo_isla ? "MODO ISLA" : (gw_ok ? "CONECTADO" : "BUSCANDO");
+        aplicar_badge_estado(objects.cfg_gw_badge, objects.cfg_gw_badge_lbl, gw_ok, gw_txt);
     }
 }
 
 static void tarea_boton_local(void *arg)
 {
-	gpio_config_t io_conf = {
-		.pin_bit_mask = (1ULL << PIN_BOTON),
-		.mode = GPIO_MODE_INPUT,
-		.pull_up_en = GPIO_PULLUP_ENABLE,
-		.pull_down_en = GPIO_PULLDOWN_DISABLE,
-		.intr_type = GPIO_INTR_DISABLE,
-	};
-	gpio_config(&io_conf);
+    gpio_config_t io_conf = {
+        .pin_bit_mask = (1ULL << PIN_BOTON),
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = GPIO_PULLUP_ENABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
+    gpio_config(&io_conf);
 
-	int anterior = 1;
-	while (true) {
-		vTaskDelay(pdMS_TO_TICKS(50));
-		int nivel = gpio_get_level(PIN_BOTON);
-		if (anterior == 1 && nivel == 0) {
-			vTaskDelay(pdMS_TO_TICKS(30));
-			if (gpio_get_level(PIN_BOTON) == 0) {
-				uint8_t mac_hoja[6];
-				if (mesh_hojas_get_ultima(mac_hoja)) {
-					char hw[AURA_HW_ID_BYTES];
-					aura_hw_id_de_mac(mac_hoja, hw);
-					ESP_LOGI(TAG, "Boton pulsado: orden conmutar LED enviada a %s", hw);
-					ui_bridge_conmutar_actuador(mac_hoja, "led");
-				} else {
-					ESP_LOGW(TAG, "Boton pulsado: sin hojas activas en el aula");
-				}
-			}
-		}
-		anterior = nivel;
-	}
+    int anterior = 1;
+    while (true) {
+        vTaskDelay(pdMS_TO_TICKS(50));
+        int nivel = gpio_get_level(PIN_BOTON);
+        if (anterior == 1 && nivel == 0) {
+            vTaskDelay(pdMS_TO_TICKS(30));
+            if (gpio_get_level(PIN_BOTON) == 0) {
+                uint8_t mac_hoja[6];
+                if (mesh_hojas_get_ultima(mac_hoja)) {
+                    char hw[AURA_HW_ID_BYTES];
+                    aura_hw_id_de_mac(mac_hoja, hw);
+                    ESP_LOGI(TAG, "Boton pulsado: orden conmutar LED enviada a %s", hw);
+                    ui_bridge_conmutar_actuador(mac_hoja, "led");
+                } else {
+                    ESP_LOGW(TAG, "Boton pulsado: sin hojas activas en el aula");
+                }
+            }
+        }
+        anterior = nivel;
+    }
 }
 
-static void on_mesh_event(void *arg, esp_event_base_t base, int32_t id, void *data) {
-	if (id == MESH_EVENT_STARTED) {
-		if (mesh_isla_esta_activa()) {
-			esp_mesh_set_self_organized(false, false);
-		}
-		mesh_net_anunciar_aula();
-		ui_bridge_actualizar_red(!mesh_isla_esta_activa(), mesh_isla_esta_activa(), mesh_isla_get_canal(), mesh_net_get_aula());
-	} else if (id == MESH_EVENT_SCAN_DONE) {
-		if (mesh_isla_esta_activa()) {
-			mesh_event_scan_done_t *s = (mesh_event_scan_done_t *)data;
-			mesh_isla_procesar_escaneo(s->number);
-		}
-	} else if (id == MESH_EVENT_PARENT_CONNECTED) {
-		mesh_event_connected_t *c = (mesh_event_connected_t *)data;
-		mesh_isla_notificar_padre_conectado(c->connected.channel);
-		mesh_net_anunciar_aula();
-		ui_bridge_actualizar_red(true, false, c->connected.channel, mesh_net_get_aula());
-		if (esp_mesh_is_root()) {
-			esp_netif_dhcpc_start(netif_sta);
-		} else {
-			mesh_hora_pedir_sincronizacion();
-		}
-	} else if (id == MESH_EVENT_PARENT_DISCONNECTED) {
-		mesh_isla_notificar_padre_desconectado();
-		ui_bridge_actualizar_red(false, mesh_isla_esta_activa(), 0, mesh_net_get_aula());
-	} else if (id == MESH_EVENT_CHILD_CONNECTED) {
-		mesh_event_child_connected_t *c = (mesh_event_child_connected_t *)data;
-		mesh_hojas_notificar_child_connected(c->mac);
-		ESP_LOGI(TAG, "Hijo conectado a la malla: " MACSTR " (aid %d)", MAC2STR(c->mac), c->aid);
-	} else if (id == MESH_EVENT_CHILD_DISCONNECTED) {
-		mesh_event_child_disconnected_t *c = (mesh_event_child_disconnected_t *)data;
-		mesh_hojas_notificar_child_disconnected(c->mac);
-		ESP_LOGW(TAG, "Hijo desconectado de la malla: " MACSTR, MAC2STR(c->mac));
-	}
+static void on_mesh_event(void *arg, esp_event_base_t base, int32_t id, void *data)
+{
+    if (id == MESH_EVENT_STARTED) {
+        if (mesh_isla_esta_activa()) {
+            esp_mesh_set_self_organized(false, false);
+        }
+        mesh_net_anunciar_aula();
+        ui_bridge_actualizar_red(!mesh_isla_esta_activa(), mesh_isla_esta_activa(), mesh_isla_get_canal(), mesh_net_get_aula());
+    } else if (id == MESH_EVENT_SCAN_DONE) {
+        if (mesh_isla_esta_activa()) {
+            mesh_event_scan_done_t *s = (mesh_event_scan_done_t *)data;
+            mesh_isla_procesar_escaneo(s->number);
+        }
+    } else if (id == MESH_EVENT_PARENT_CONNECTED) {
+        mesh_event_connected_t *c = (mesh_event_connected_t *)data;
+        mesh_isla_notificar_padre_conectado(c->connected.channel);
+        mesh_net_anunciar_aula();
+        ui_bridge_actualizar_red(true, false, c->connected.channel, mesh_net_get_aula());
+        if (esp_mesh_is_root()) {
+            esp_netif_dhcpc_start(netif_sta);
+        } else {
+            mesh_hora_pedir_sincronizacion();
+        }
+    } else if (id == MESH_EVENT_PARENT_DISCONNECTED) {
+        mesh_isla_notificar_padre_desconectado();
+        ui_bridge_actualizar_red(false, mesh_isla_esta_activa(), 0, mesh_net_get_aula());
+    } else if (id == MESH_EVENT_CHILD_CONNECTED) {
+        mesh_event_child_connected_t *c = (mesh_event_child_connected_t *)data;
+        mesh_hojas_notificar_child_connected(c->mac);
+        ESP_LOGI(TAG, "Hijo conectado a la malla: " MACSTR " (aid %d)", MAC2STR(c->mac), c->aid);
+    } else if (id == MESH_EVENT_CHILD_DISCONNECTED) {
+        mesh_event_child_disconnected_t *c = (mesh_event_child_disconnected_t *)data;
+        mesh_hojas_notificar_child_disconnected(c->mac);
+        ESP_LOGW(TAG, "Hijo desconectado de la malla: " MACSTR, MAC2STR(c->mac));
+    }
 }
 
-void app_main(void) {
-	ESP_ERROR_CHECK(nvs_flash_init());
-	ESP_LOGI(TAG, "Protocolo AURA v%d cargado (cabecera %d B, payload max %d B)",
-	         AURA_PROTO_VERSION, AURA_CABECERA_BYTES, AURA_PAYLOAD_MAX);
-	ESP_ERROR_CHECK(esp_netif_init());
-	ESP_ERROR_CHECK(esp_event_loop_create_default());
-	ESP_ERROR_CHECK(esp_netif_create_default_wifi_mesh_netifs(&netif_sta, NULL));
+void app_main(void)
+{
+    ESP_ERROR_CHECK(nvs_flash_init());
+    ESP_LOGI(TAG, "Protocolo AURA v%d cargado (cabecera %d B, payload max %d B)",
+             AURA_PROTO_VERSION, AURA_CABECERA_BYTES, AURA_PAYLOAD_MAX);
+    ESP_ERROR_CHECK(esp_netif_init());
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    ESP_ERROR_CHECK(esp_netif_create_default_wifi_mesh_netifs(&netif_sta, NULL));
 
-	wifi_init_config_t wifi_cfg = WIFI_INIT_CONFIG_DEFAULT();
-	ESP_ERROR_CHECK(esp_wifi_init(&wifi_cfg));
-	ESP_ERROR_CHECK(esp_wifi_start());
+    wifi_init_config_t wifi_cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_wifi_init(&wifi_cfg));
+    ESP_ERROR_CHECK(esp_wifi_start());
 
-	ESP_ERROR_CHECK(mesh_isla_init((const uint8_t *)"MESH01"));
+    ESP_ERROR_CHECK(mesh_isla_init((const uint8_t *)"MESH01"));
 
-	ESP_ERROR_CHECK(esp_mesh_init());
-	ESP_ERROR_CHECK(esp_event_handler_register(MESH_EVENT, ESP_EVENT_ANY_ID,
-						   &on_mesh_event, NULL));
-	ESP_ERROR_CHECK(esp_mesh_fix_root(true));
-	ESP_ERROR_CHECK(esp_mesh_set_max_layer(6));
-	ESP_ERROR_CHECK(esp_mesh_disable_ps());
-	ESP_ERROR_CHECK(esp_mesh_set_ap_authmode(WIFI_AUTH_OPEN));
+    ESP_ERROR_CHECK(esp_mesh_init());
+    ESP_ERROR_CHECK(esp_event_handler_register(MESH_EVENT, ESP_EVENT_ANY_ID,
+                           &on_mesh_event, NULL));
+    ESP_ERROR_CHECK(esp_mesh_fix_root(true));
+    ESP_ERROR_CHECK(esp_mesh_set_max_layer(6));
+    ESP_ERROR_CHECK(esp_mesh_disable_ps());
+    ESP_ERROR_CHECK(esp_mesh_set_ap_authmode(WIFI_AUTH_OPEN));
 
-	mesh_cfg_t cfg = MESH_INIT_CONFIG_DEFAULT();
-	memcpy(cfg.mesh_id.addr, "MESH01", 6);
-	const char *router = mesh_isla_esta_activa() ? MESH_ROUTER_ISLA : "NO_EXISTE_ESTE_ROUTER";
-	cfg.router.ssid_len = strlen(router);
-	memcpy(cfg.router.ssid, router, cfg.router.ssid_len);
-	cfg.channel = mesh_isla_esta_activa() ? mesh_isla_get_canal() : 0;
-	cfg.allow_channel_switch = !mesh_isla_esta_activa();
-	cfg.mesh_ap.max_connection = 4;
-	cfg.mesh_ap.nonmesh_max_connection = 0;
-	cfg.mesh_ap.password[0] = '\0';
+    mesh_cfg_t cfg = MESH_INIT_CONFIG_DEFAULT();
+    memcpy(cfg.mesh_id.addr, "MESH01", 6);
+    const char *router = mesh_isla_esta_activa() ? MESH_ROUTER_ISLA : "NO_EXISTE_ESTE_ROUTER";
+    cfg.router.ssid_len = strlen(router);
+    memcpy(cfg.router.ssid, router, cfg.router.ssid_len);
+    cfg.channel = mesh_isla_esta_activa() ? mesh_isla_get_canal() : 0;
+    cfg.allow_channel_switch = !mesh_isla_esta_activa();
+    cfg.mesh_ap.max_connection = 4;
+    cfg.mesh_ap.nonmesh_max_connection = 0;
+    cfg.mesh_ap.password[0] = '\0';
 
-	if (mesh_isla_esta_activa()) {
-		ESP_ERROR_CHECK(esp_mesh_set_type(MESH_ROOT));
-	}
-	ESP_ERROR_CHECK(esp_mesh_set_config(&cfg));
-	ESP_ERROR_CHECK(esp_mesh_start());
+    if (mesh_isla_esta_activa()) {
+        ESP_ERROR_CHECK(esp_mesh_set_type(MESH_ROOT));
+    }
+    ESP_ERROR_CHECK(esp_mesh_set_config(&cfg));
+    ESP_ERROR_CHECK(esp_mesh_start());
 
-	ESP_ERROR_CHECK(mesh_net_init());
-	ESP_ERROR_CHECK(mesh_net_anunciar_aula());
-	ESP_ERROR_CHECK(ui_bridge_init());
-	xTaskCreate(tarea_demo_nodos, "demo_nodos", 4096, NULL, 3, NULL);
-	ui_bridge_actualizar_red(!mesh_isla_esta_activa(), mesh_isla_esta_activa(), mesh_isla_get_canal(), mesh_net_get_aula());
+    ESP_ERROR_CHECK(mesh_net_init());
+    ESP_ERROR_CHECK(mesh_net_anunciar_aula());
+    ESP_ERROR_CHECK(relay_ctrl_init());
+    ESP_ERROR_CHECK(ui_bridge_init());
 
-	ESP_ERROR_CHECK(mesh_hojas_init(mesh_net_get_aula(), ui_bridge_on_mesh_evento_hoja, ui_bridge_on_mesh_telemetria));
-	ESP_ERROR_CHECK(mesh_control_init(on_control_resultado));
-	ESP_ERROR_CHECK(mesh_lote_init(enviar_a_raiz_cb));
-	ESP_ERROR_CHECK(mesh_hora_init(enviar_trama_mesh_cb));
+#if CONFIG_AURA_ENABLE_DEMO_NODES
+    xTaskCreate(tarea_demo_nodos, "demo_nodos", 4096, NULL, 3, NULL);
+#endif
 
-	esp_err_t err_touch = bsp_touch_init();
-	if (err_touch == ESP_OK) {
-		ESP_LOGI(TAG, "BSP Touch Goodix GT911 inicializado con exito");
-	} else {
-		ESP_LOGW(TAG, "BSP Touch no detectado (err=%s)", esp_err_to_name(err_touch));
-	}
+    ui_bridge_actualizar_red(!mesh_isla_esta_activa(), mesh_isla_esta_activa(), mesh_isla_get_canal(), mesh_net_get_aula());
 
-	esp_err_t err_disp = bsp_display_init(NULL);
-	if (err_disp == ESP_OK) {
-		ESP_LOGI(TAG, "BSP Display RGB inicializado con exito");
-		esp_err_t err_ui = ui_port_init();
-		if (err_ui == ESP_OK) {
-			if (ui_port_lock(100)) {
-				ui_init();
-				ui_bridge_registrar_observador(on_ui_bridge_notif, NULL);
-				lv_timer_create(refresco_eez_ui_timer_cb, 250, NULL);
-				ui_port_unlock();
-				ESP_LOGI(TAG, "Interfaz EEZ Studio inicializada con exito");
-			}
-		} else {
-			ESP_LOGE(TAG, "Fallo al inicializar ui_port (%s)", esp_err_to_name(err_ui));
-		}
-	} else {
-		ESP_LOGW(TAG, "BSP Display no inicializado (err=%s)", esp_err_to_name(err_disp));
-	}
+    ESP_ERROR_CHECK(mesh_hojas_init(mesh_net_get_aula(), ui_bridge_on_mesh_evento_hoja, ui_bridge_on_mesh_telemetria));
+    ESP_ERROR_CHECK(mesh_control_init(on_control_resultado));
+    ESP_ERROR_CHECK(mesh_lote_init(enviar_a_raiz_cb));
+    ESP_ERROR_CHECK(mesh_hora_init(enviar_trama_mesh_cb));
 
-	if (err_disp != ESP_OK) {
-		xTaskCreate(tarea_boton_local, "btn_local", 2048, NULL, 3, NULL);
-	}
+    esp_err_t err_touch = bsp_touch_init();
+    if (err_touch == ESP_OK) {
+        ESP_LOGI(TAG, "BSP Touch Goodix GT911 inicializado con exito");
+    } else {
+        ESP_LOGW(TAG, "BSP Touch no detectado (err=%s)", esp_err_to_name(err_touch));
+    }
 
-	uint8_t rx_buf[AURA_TRAMA_MAX];
-	while (true) {
-		mesh_addr_t from;
-		mesh_data_t data = { .data = rx_buf, .size = sizeof(rx_buf) };
-		int flag = 0;
-		if (esp_mesh_recv(&from, &data, 1000, &flag, NULL, 0) == ESP_OK) {
-			aura_validacion_t v = aura_trama_validar(rx_buf, data.size);
-			if (v == AURA_TRAMA_OK) {
-				const aura_trama_t *t = (const aura_trama_t *)rx_buf;
+    esp_err_t err_disp = bsp_display_init(NULL);
+    if (err_disp == ESP_OK) {
+        ESP_LOGI(TAG, "BSP Display RGB inicializado con exito");
+        esp_err_t err_ui = ui_port_init();
+        if (err_ui == ESP_OK) {
+            if (ui_port_lock(100)) {
+                ui_init();
+                if (objects.dash_ticker_lbl) {
+                    lv_label_set_long_mode(objects.dash_ticker_lbl, LV_LABEL_LONG_SCROLL_CIRCULAR);
+                }
+                init_local_relays_ui();
+                s_eez_ui_sucio = true;
+                refresco_eez_ui_timer_cb(NULL);
+                ui_bridge_registrar_observador(on_ui_bridge_notif, NULL);
+                lv_timer_create(refresco_eez_ui_timer_cb, 250, NULL);
+                ui_port_unlock();
+                ESP_LOGI(TAG, "Interfaz EEZ Studio inicializada con exito");
+            }
+        } else {
+            ESP_LOGE(TAG, "Fallo al inicializar ui_port (%s)", esp_err_to_name(err_ui));
+        }
+    } else {
+        ESP_LOGW(TAG, "BSP Display no inicializado (err=%s)", esp_err_to_name(err_disp));
+    }
 
-				if (t->tipo == AURA_TIPO_HORA && mesh_hora_procesar_trama(from.addr, t)) {
-					continue;
-				}
+    if (err_disp != ESP_OK) {
+        xTaskCreate(tarea_boton_local, "btn_local", 2048, NULL, 3, NULL);
+    }
 
-				if (t->tipo == AURA_TIPO_RESULTADO) {
-					mesh_control_procesar_resultado(from.addr, t);
-				}
+    uint8_t rx_buf[AURA_TRAMA_MAX];
+    while (true) {
+        mesh_addr_t from;
+        mesh_data_t data = { .data = rx_buf, .size = sizeof(rx_buf) };
+        int flag = 0;
+        if (esp_mesh_recv(&from, &data, 1000, &flag, NULL, 0) == ESP_OK) {
+            aura_validacion_t v = aura_trama_validar(rx_buf, data.size);
+            if (v == AURA_TRAMA_OK) {
+                const aura_trama_t *t = (const aura_trama_t *)rx_buf;
 
-				bool descartar_reenvio = false;
-				mesh_hojas_procesar_trama(from.addr, t, &descartar_reenvio);
-				if (descartar_reenvio || mesh_isla_esta_activa()) {
-					continue;
-				}
+                if (t->tipo == AURA_TIPO_HORA && mesh_hora_procesar_trama(from.addr, t)) {
+                    continue;
+                }
 
-				bool prioritario = (t->tipo == AURA_TIPO_ALERTA ||
-				                    t->tipo == AURA_TIPO_RESULTADO ||
-				                    t->tipo == AURA_TIPO_REPORTE);
-				ESP_LOGI(TAG, "Trama valida de " MACSTR " [%s], seq=%u, prioritario=%d",
-				         MAC2STR(from.addr), aura_tipo_a_str(t->tipo), t->seq, prioritario);
-				mesh_lote_agregar(from.addr, rx_buf, data.size, prioritario);
-			} else {
-				ESP_LOGD(TAG, "Dato recibido de " MACSTR " no es trama simple AURA (%d bytes)",
-				         MAC2STR(from.addr), data.size);
-			}
-		}
-	}
+                if (t->tipo == AURA_TIPO_RESULTADO) {
+                    mesh_control_procesar_resultado(from.addr, t);
+                }
+
+                bool descartar_reenvio = false;
+                mesh_hojas_procesar_trama(from.addr, t, &descartar_reenvio);
+                if (descartar_reenvio || mesh_isla_esta_activa()) {
+                    continue;
+                }
+
+                bool prioritario = (t->tipo == AURA_TIPO_ALERTA ||
+                                    t->tipo == AURA_TIPO_RESULTADO ||
+                                    t->tipo == AURA_TIPO_REPORTE);
+                ESP_LOGI(TAG, "Trama valida de " MACSTR " [%s], seq=%u, prioritario=%d",
+                         MAC2STR(from.addr), aura_tipo_a_str(t->tipo), t->seq, prioritario);
+                mesh_lote_agregar(from.addr, rx_buf, data.size, prioritario);
+            } else {
+                ESP_LOGD(TAG, "Dato recibido de " MACSTR " no es trama simple AURA (%d bytes)",
+                         MAC2STR(from.addr), data.size);
+            }
+        }
+    }
 }

@@ -1,104 +1,233 @@
 #include "actions.h"
 #include "ui.h"
 #include "screens.h"
+#include "styles.h"
 #include "vars.h"
 #include "esp_log.h"
 #include "ui_bridge.h"
+#include "relay_ctrl.h"
 
 static const char *TAG = "ui_actions";
 
+static void sync_theme_buttons(bool dark)
+{
+    const char *hdr_txt = dark ? "Tema Claro" : "Tema Oscuro";
+    if (objects.dashboard_header__header_theme_lbl) lv_label_set_text(objects.dashboard_header__header_theme_lbl, hdr_txt);
+    if (objects.devices_header__header_theme_lbl)   lv_label_set_text(objects.devices_header__header_theme_lbl, hdr_txt);
+    if (objects.config_header__header_theme_lbl)    lv_label_set_text(objects.config_header__header_theme_lbl, hdr_txt);
+    if (objects.about_header__header_theme_lbl)     lv_label_set_text(objects.about_header__header_theme_lbl, hdr_txt);
+
+    if (objects.cfg_btn_theme_light && objects.cfg_btn_theme_dark) {
+        if (dark) {
+            remove_style_btn_toggle_on(objects.cfg_btn_theme_light);
+            add_style_btn_toggle_off(objects.cfg_btn_theme_light);
+            remove_style_label_btn_light(objects.cfg_lbl_theme_light);
+            add_style_label_btn_muted(objects.cfg_lbl_theme_light);
+
+            remove_style_btn_toggle_off(objects.cfg_btn_theme_dark);
+            add_style_btn_toggle_on(objects.cfg_btn_theme_dark);
+            remove_style_label_btn_muted(objects.cfg_lbl_theme_dark);
+            add_style_label_btn_light(objects.cfg_lbl_theme_dark);
+        } else {
+            remove_style_btn_toggle_off(objects.cfg_btn_theme_light);
+            add_style_btn_toggle_on(objects.cfg_btn_theme_light);
+            remove_style_label_btn_muted(objects.cfg_lbl_theme_light);
+            add_style_label_btn_light(objects.cfg_lbl_theme_light);
+
+            remove_style_btn_toggle_on(objects.cfg_btn_theme_dark);
+            add_style_btn_toggle_off(objects.cfg_btn_theme_dark);
+            remove_style_label_btn_light(objects.cfg_lbl_theme_dark);
+            add_style_label_btn_muted(objects.cfg_lbl_theme_dark);
+        }
+    }
+}
+
+static void sync_local_relay_btn(lv_obj_t *btn, bool on)
+{
+    if (!btn) return;
+    if (on) {
+        remove_style_btn_relay_squircle_off(btn);
+        add_style_btn_relay_squircle_on(btn);
+    } else {
+        remove_style_btn_relay_squircle_on(btn);
+        add_style_btn_relay_squircle_off(btn);
+    }
+    lv_obj_invalidate(btn);
+}
+
 void action_nav_dashboard(lv_event_t *e)
 {
+    (void)e;
     ESP_LOGI(TAG, "Navegar a Dashboard");
     loadScreen(SCREEN_ID_DASHBOARD);
 }
 
 void action_nav_devices(lv_event_t *e)
 {
+    (void)e;
     ESP_LOGI(TAG, "Navegar a Dispositivos");
     loadScreen(SCREEN_ID_DEVICES);
 }
 
 void action_nav_config(lv_event_t *e)
 {
+    (void)e;
     ESP_LOGI(TAG, "Navegar a Config");
     loadScreen(SCREEN_ID_CONFIG);
 }
 
 void action_nav_about(lv_event_t *e)
 {
+    (void)e;
     ESP_LOGI(TAG, "Navegar a Acerca de");
     loadScreen(SCREEN_ID_ABOUT);
 }
 
 void action_toggle_theme(lv_event_t *e)
 {
+    (void)e;
     uint32_t next = (active_theme_index == THEME_ID_DEFAULT) ? THEME_ID_DARK : THEME_ID_DEFAULT;
-    ESP_LOGI(TAG, "Conmutar tema a: %s", (next == THEME_ID_DARK) ? "Oscuro" : "Claro");
+    bool is_dark = (next == THEME_ID_DARK);
+    ESP_LOGI(TAG, "Conmutar tema a: %s", is_dark ? "Oscuro" : "Claro");
     change_color_theme(next);
-    set_var_dark_theme(next == THEME_ID_DARK);
+    set_var_dark_theme(is_dark);
+    sync_theme_buttons(is_dark);
 }
 
 void action_set_theme_light(lv_event_t *e)
 {
+    (void)e;
     ESP_LOGI(TAG, "Fijar tema Claro");
     change_color_theme(THEME_ID_DEFAULT);
     set_var_dark_theme(false);
+    sync_theme_buttons(false);
 }
 
 void action_set_theme_dark(lv_event_t *e)
 {
+    (void)e;
     ESP_LOGI(TAG, "Fijar tema Oscuro");
     change_color_theme(THEME_ID_DARK);
     set_var_dark_theme(true);
+    sync_theme_buttons(true);
 }
 
-void action_toggle_actuator1(lv_event_t *e)
+void action_toggle_local_relay1(lv_event_t *e)
 {
-    bool st = !get_var_act_vent_on();
+    (void)e;
+    bool st = relay_ctrl_toggle(0);
     set_var_act_vent_on(st);
-    ESP_LOGI(TAG, "Actuador 1 (Ventilacion) conmutado a: %s", st ? "ON" : "OFF");
-    if (objects.dash_act1_btn_lbl) {
-        lv_label_set_text(objects.dash_act1_btn_lbl, st ? "ON" : "OFF");
-    }
+    sync_local_relay_btn(objects.dash_relay_btn_1, st);
 }
 
-void action_toggle_actuator2(lv_event_t *e)
+void action_toggle_local_relay2(lv_event_t *e)
 {
-    bool st = !get_var_act_lights_on();
+    (void)e;
+    bool st = relay_ctrl_toggle(1);
     set_var_act_lights_on(st);
-    ESP_LOGI(TAG, "Actuador 2 (Luces) conmutado a: %s", st ? "ON" : "OFF");
-    if (objects.dash_act2_btn_lbl) {
-        lv_label_set_text(objects.dash_act2_btn_lbl, st ? "ON" : "OFF");
-    }
+    sync_local_relay_btn(objects.dash_relay_btn_2, st);
 }
 
-void action_toggle_actuator3(lv_event_t *e)
+void action_toggle_local_relay3(lv_event_t *e)
 {
-    bool st = !get_var_act_led_on();
+    (void)e;
+    bool st = relay_ctrl_toggle(2);
     set_var_act_led_on(st);
-    ESP_LOGI(TAG, "Actuador 3 (LED) conmutado a: %s", st ? "ON" : "OFF");
-    if (objects.dash_act3_btn_lbl) {
-        lv_label_set_text(objects.dash_act3_btn_lbl, st ? "ON" : "OFF");
+    sync_local_relay_btn(objects.dash_relay_btn_3, st);
+}
+
+void action_toggle_local_relay4(lv_event_t *e)
+{
+    (void)e;
+    bool st = relay_ctrl_toggle(3);
+    sync_local_relay_btn(objects.dash_relay_btn_4, st);
+}
+
+void action_toggle_local_relay5(lv_event_t *e)
+{
+    (void)e;
+    bool st = relay_ctrl_toggle(4);
+    sync_local_relay_btn(objects.dash_relay_btn_5, st);
+}
+
+static void toggle_remote_node_actuator(uint8_t node_idx, lv_obj_t *sub_lbl)
+{
+    static ui_estado_aula_t snap;
+    if (ui_bridge_get_snapshot(&snap) != ESP_OK) return;
+    if (node_idx >= snap.cant_nodos) {
+        ESP_LOGW(TAG, "No hay nodo hoja en indice %u para conmutar actuador", (unsigned)node_idx);
+        return;
+    }
+    const ui_nodo_t *n = &snap.nodos[node_idx];
+    const char *act_key = (n->actuador_key[0] != '\0') ? n->actuador_key : "led";
+    ESP_LOGI(TAG, "Enviando orden conmutar '%s' a nodo %s", act_key, n->hw_id);
+    if (sub_lbl) {
+        lv_label_set_text(sub_lbl, "Estado: ENVIANDO...");
+    }
+    ui_bridge_conmutar_actuador(n->mac, act_key);
+}
+
+void action_toggle_node1_actuator(lv_event_t *e)
+{
+    (void)e;
+    toggle_remote_node_actuator(0, objects.dash_n1_act_sub);
+}
+
+void action_toggle_node2_actuator(lv_event_t *e)
+{
+    (void)e;
+    toggle_remote_node_actuator(1, objects.dash_n2_act_sub);
+}
+
+static void sync_filter_chips(int active_idx)
+{
+    lv_obj_t *btns[3] = { objects.dev_chip_all, objects.dev_chip_sens, objects.dev_chip_act };
+    lv_obj_t *lbls[3] = { objects.dev_chip_all_lbl, objects.dev_chip_sens_lbl, objects.dev_chip_act_lbl };
+    for (int i = 0; i < 3; i++) {
+        if (!btns[i] || !lbls[i]) continue;
+        if (i == active_idx) {
+            remove_style_btn_filter_idle(btns[i]);
+            add_style_btn_filter_active(btns[i]);
+            remove_style_label_chip_muted(lbls[i]);
+            add_style_label_chip_light(lbls[i]);
+        } else {
+            remove_style_btn_filter_active(btns[i]);
+            add_style_btn_filter_idle(btns[i]);
+            remove_style_label_chip_light(lbls[i]);
+            add_style_label_chip_muted(lbls[i]);
+        }
     }
 }
 
 void action_filter_all(lv_event_t *e)
 {
+    (void)e;
     ESP_LOGI(TAG, "Filtro Dispositivos: Todos");
+    sync_filter_chips(0);
 }
 
 void action_filter_sensors(lv_event_t *e)
 {
+    (void)e;
     ESP_LOGI(TAG, "Filtro Dispositivos: Sensores");
+    sync_filter_chips(1);
 }
 
 void action_filter_actuators(lv_event_t *e)
 {
+    (void)e;
     ESP_LOGI(TAG, "Filtro Dispositivos: Actuadores");
+    sync_filter_chips(2);
 }
 
 void action_save_config(lv_event_t *e)
 {
-    ESP_LOGI(TAG, "Configuracion guardada");
+    (void)e;
+    if (objects.cfg_slider_bright && objects.cfg_lbl_bright_val) {
+        int val = (int)lv_slider_get_value(objects.cfg_slider_bright);
+        char b[16];
+        snprintf(b, sizeof(b), "%d %%", val);
+        lv_label_set_text(objects.cfg_lbl_bright_val, b);
+    }
+    ESP_LOGI(TAG, "Configuracion aplicada");
 }

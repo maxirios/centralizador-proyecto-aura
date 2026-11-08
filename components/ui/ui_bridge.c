@@ -279,6 +279,8 @@ void ui_bridge_on_control_resultado(const mesh_control_resultado_t *res)
     ui_nodo_t *n = buscar_o_crear_nodo(res->de_mac);
     if (n && res->aplicado) {
         n->tiene_actuador = true;
+        n->actuador_estado = !n->actuador_estado;
+        formatear_ticker_nodo(n);
     }
     ui_bridge_unlock();
 

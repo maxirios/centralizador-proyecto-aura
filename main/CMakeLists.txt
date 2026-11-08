@@ -3,6 +3,7 @@ file(GLOB_RECURSE UI_SRCS "ui/*.c")
 idf_component_register(
     SRCS
         "main.c"
+        "relay_ctrl.c"
         "actions.c"
         "vars.c"
         ${UI_SRCS}
