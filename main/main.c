@@ -20,6 +20,9 @@
 #include "ui_bridge.h"
 #include "ui_port.h"
 #include "ui_dashboard.h"
+#include "ui.h"
+#include "screens.h"
+#include <math.h>
 #include "driver/gpio.h"
 
 #define PIN_BOTON GPIO_NUM_0
@@ -87,6 +90,49 @@ static void tarea_demo_nodos(void *arg)
         ui_bridge_on_mesh_telemetria(mac_b, 0, "{\"temp_c\":23.4}", false);
         ui_bridge_on_mesh_telemetria(mac_c, 0, "{\"presencia\":true,\"led\":0}", false);
         vTaskDelay(pdMS_TO_TICKS(2000));
+    }
+}
+
+static volatile bool s_eez_ui_sucio = true;
+
+static void on_ui_bridge_notif(ui_evento_tipo_t evento, const void *datos, void *user_data)
+{
+    s_eez_ui_sucio = true;
+}
+
+static void refresco_eez_ui_timer_cb(lv_timer_t *t)
+{
+    if (!s_eez_ui_sucio) return;
+    s_eez_ui_sucio = false;
+
+    static ui_estado_aula_t snap;
+    if (ui_bridge_get_snapshot(&snap) != ESP_OK) return;
+
+    char mesh_txt[32];
+    snprintf(mesh_txt, sizeof(mesh_txt), "Mesh OK (%d)", snap.cant_nodos);
+    if (objects.dashboard_header__header_mesh_lbl) lv_label_set_text(objects.dashboard_header__header_mesh_lbl, mesh_txt);
+    if (objects.devices_header__header_mesh_lbl) lv_label_set_text(objects.devices_header__header_mesh_lbl, mesh_txt);
+    if (objects.config_header__header_mesh_lbl) lv_label_set_text(objects.config_header__header_mesh_lbl, mesh_txt);
+    if (objects.about_header__header_mesh_lbl) lv_label_set_text(objects.about_header__header_mesh_lbl, mesh_txt);
+
+    if (snap.cant_nodos > 0) {
+        const ui_nodo_t *n = &snap.nodos[0];
+        char b[32];
+        if (!isnan(n->temp) && objects.dash_lbl_temp_val) {
+            snprintf(b, sizeof(b), "%.1f °C", n->temp);
+            lv_label_set_text(objects.dash_lbl_temp_val, b);
+        }
+        if (!isnan(n->hum) && objects.dash_lbl_hum_val) {
+            snprintf(b, sizeof(b), "%.0f %%", n->hum);
+            lv_label_set_text(objects.dash_lbl_hum_val, b);
+        }
+        if (!isnan(n->co2) && objects.dash_lbl_co2_val) {
+            snprintf(b, sizeof(b), "%d ppm", (int)n->co2);
+            lv_label_set_text(objects.dash_lbl_co2_val, b);
+            if (objects.dash_bar_co2) {
+                lv_bar_set_value(objects.dash_bar_co2, (int)n->co2, LV_ANIM_OFF);
+            }
+        }
     }
 }
 
@@ -209,24 +255,30 @@ void app_main(void) {
 	ESP_ERROR_CHECK(mesh_lote_init(enviar_a_raiz_cb));
 	ESP_ERROR_CHECK(mesh_hora_init(enviar_trama_mesh_cb));
 
-	esp_err_t err_disp = bsp_display_init(NULL);
-	if (err_disp == ESP_OK) {
-		ESP_LOGI(TAG, "BSP Display RGB inicializado con exito");
-		esp_err_t err_ui = ui_port_init();
-		if (err_ui == ESP_OK) {
-			ui_dashboard_create();
-		} else {
-			ESP_LOGE(TAG, "Fallo al inicializar ui_port (%s)", esp_err_to_name(err_ui));
-		}
-	} else {
-		ESP_LOGW(TAG, "BSP Display no inicializado (err=%s)", esp_err_to_name(err_disp));
-	}
-
 	esp_err_t err_touch = bsp_touch_init();
 	if (err_touch == ESP_OK) {
 		ESP_LOGI(TAG, "BSP Touch Goodix GT911 inicializado con exito");
 	} else {
 		ESP_LOGW(TAG, "BSP Touch no detectado (err=%s)", esp_err_to_name(err_touch));
+	}
+
+	esp_err_t err_disp = bsp_display_init(NULL);
+	if (err_disp == ESP_OK) {
+		ESP_LOGI(TAG, "BSP Display RGB inicializado con exito");
+		esp_err_t err_ui = ui_port_init();
+		if (err_ui == ESP_OK) {
+			if (ui_port_lock(100)) {
+				ui_init();
+				ui_bridge_registrar_observador(on_ui_bridge_notif, NULL);
+				lv_timer_create(refresco_eez_ui_timer_cb, 250, NULL);
+				ui_port_unlock();
+				ESP_LOGI(TAG, "Interfaz EEZ Studio inicializada con exito");
+			}
+		} else {
+			ESP_LOGE(TAG, "Fallo al inicializar ui_port (%s)", esp_err_to_name(err_ui));
+		}
+	} else {
+		ESP_LOGW(TAG, "BSP Display no inicializado (err=%s)", esp_err_to_name(err_disp));
 	}
 
 	if (err_disp != ESP_OK) {
