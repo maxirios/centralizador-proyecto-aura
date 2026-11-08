@@ -11,7 +11,7 @@
 
 static const char *TAG = "mesh_net";
 static const char *NVS_NAMESPACE = "concentrador";
-static const char *NVS_KEY_AULA = "aula";
+static const char *NVS_KEY_AULA = "aula_gw";
 
 static char s_aula[AURA_AULA_MAX] = {0};
 static uint8_t s_mi_mac[6] = {0};
@@ -39,17 +39,15 @@ esp_err_t mesh_net_init(void)
         size_t len = sizeof(s_aula);
         err = nvs_get_str(h, NVS_KEY_AULA, s_aula, &len);
         if (err != ESP_OK || s_aula[0] == '\0' || !aura_aula_valida(s_aula)) {
-            ESP_LOGW(TAG, "Aula no persistida o invalida en NVS. Usando por defecto: '%s'", CONFIG_AURA_AULA_DEFAULT);
-            strlcpy(s_aula, CONFIG_AURA_AULA_DEFAULT, sizeof(s_aula));
-            nvs_set_str(h, NVS_KEY_AULA, s_aula);
-            nvs_commit(h);
+            s_aula[0] = '\0';
+            ESP_LOGW(TAG, "Sin aula en NVS (la asigna el Gateway con set_config {\"aula\":...})");
         } else {
             ESP_LOGI(TAG, "Aula recuperada de NVS: '%s'", s_aula);
         }
         nvs_close(h);
     } else {
-        ESP_LOGW(TAG, "No se pudo abrir NVS (%s). Usando aula por defecto: '%s'", esp_err_to_name(err), CONFIG_AURA_AULA_DEFAULT);
-        strlcpy(s_aula, CONFIG_AURA_AULA_DEFAULT, sizeof(s_aula));
+        s_aula[0] = '\0';
+        ESP_LOGW(TAG, "No se pudo abrir NVS (%s). Aula sin asignar", esp_err_to_name(err));
     }
 
     s_inicializado = true;

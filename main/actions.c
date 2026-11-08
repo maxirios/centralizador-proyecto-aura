@@ -9,14 +9,10 @@
 
 static const char *TAG = "ui_actions";
 
+extern void ui_ticker_step(int delta);
+
 static void sync_theme_buttons(bool dark)
 {
-    const char *hdr_txt = dark ? "Tema Claro" : "Tema Oscuro";
-    if (objects.dashboard_header__header_theme_lbl) lv_label_set_text(objects.dashboard_header__header_theme_lbl, hdr_txt);
-    if (objects.devices_header__header_theme_lbl)   lv_label_set_text(objects.devices_header__header_theme_lbl, hdr_txt);
-    if (objects.config_header__header_theme_lbl)    lv_label_set_text(objects.config_header__header_theme_lbl, hdr_txt);
-    if (objects.about_header__header_theme_lbl)     lv_label_set_text(objects.about_header__header_theme_lbl, hdr_txt);
-
     if (objects.cfg_btn_theme_light && objects.cfg_btn_theme_dark) {
         if (dark) {
             remove_style_btn_toggle_on(objects.cfg_btn_theme_light);
@@ -55,6 +51,48 @@ static void sync_local_relay_btn(lv_obj_t *btn, bool on)
     lv_obj_invalidate(btn);
 }
 
+static void sync_dash_subtabs(bool show_actuators)
+{
+    if (objects.dash_view_actuadores) {
+        if (show_actuators) {
+            lv_obj_clear_flag(objects.dash_view_actuadores, LV_OBJ_FLAG_HIDDEN);
+        } else {
+            lv_obj_add_flag(objects.dash_view_actuadores, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+    if (objects.dash_view_sensores) {
+        if (show_actuators) {
+            lv_obj_add_flag(objects.dash_view_sensores, LV_OBJ_FLAG_HIDDEN);
+        } else {
+            lv_obj_clear_flag(objects.dash_view_sensores, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+
+    if (objects.dash_subtab_act_btn && objects.dash_subtab_sens_btn) {
+        if (show_actuators) {
+            remove_style_btn_toggle_off(objects.dash_subtab_act_btn);
+            add_style_btn_toggle_on(objects.dash_subtab_act_btn);
+            remove_style_label_btn_muted(objects.dash_subtab_act_lbl);
+            add_style_label_btn_light(objects.dash_subtab_act_lbl);
+
+            remove_style_btn_toggle_on(objects.dash_subtab_sens_btn);
+            add_style_btn_toggle_off(objects.dash_subtab_sens_btn);
+            remove_style_label_btn_light(objects.dash_subtab_sens_lbl);
+            add_style_label_btn_muted(objects.dash_subtab_sens_lbl);
+        } else {
+            remove_style_btn_toggle_on(objects.dash_subtab_act_btn);
+            add_style_btn_toggle_off(objects.dash_subtab_act_btn);
+            remove_style_label_btn_light(objects.dash_subtab_act_lbl);
+            add_style_label_btn_muted(objects.dash_subtab_act_lbl);
+
+            remove_style_btn_toggle_off(objects.dash_subtab_sens_btn);
+            add_style_btn_toggle_on(objects.dash_subtab_sens_btn);
+            remove_style_label_btn_muted(objects.dash_subtab_sens_lbl);
+            add_style_label_btn_light(objects.dash_subtab_sens_lbl);
+        }
+    }
+}
+
 void action_nav_dashboard(lv_event_t *e)
 {
     (void)e;
@@ -83,17 +121,6 @@ void action_nav_about(lv_event_t *e)
     loadScreen(SCREEN_ID_ABOUT);
 }
 
-void action_toggle_theme(lv_event_t *e)
-{
-    (void)e;
-    uint32_t next = (active_theme_index == THEME_ID_DEFAULT) ? THEME_ID_DARK : THEME_ID_DEFAULT;
-    bool is_dark = (next == THEME_ID_DARK);
-    ESP_LOGI(TAG, "Conmutar tema a: %s", is_dark ? "Oscuro" : "Claro");
-    change_color_theme(next);
-    set_var_dark_theme(is_dark);
-    sync_theme_buttons(is_dark);
-}
-
 void action_set_theme_light(lv_event_t *e)
 {
     (void)e;
@@ -110,6 +137,32 @@ void action_set_theme_dark(lv_event_t *e)
     change_color_theme(THEME_ID_DARK);
     set_var_dark_theme(true);
     sync_theme_buttons(true);
+}
+
+void action_ticker_prev(lv_event_t *e)
+{
+    (void)e;
+    ui_ticker_step(-1);
+}
+
+void action_ticker_next(lv_event_t *e)
+{
+    (void)e;
+    ui_ticker_step(1);
+}
+
+void action_dash_tab_actuators(lv_event_t *e)
+{
+    (void)e;
+    ESP_LOGI(TAG, "Dashboard Sub-pestana: Actuadores");
+    sync_dash_subtabs(true);
+}
+
+void action_dash_tab_sensors(lv_event_t *e)
+{
+    (void)e;
+    ESP_LOGI(TAG, "Dashboard Sub-pestana: Sensores");
+    sync_dash_subtabs(false);
 }
 
 void action_toggle_local_relay1(lv_event_t *e)
@@ -177,57 +230,4 @@ void action_toggle_node2_actuator(lv_event_t *e)
 {
     (void)e;
     toggle_remote_node_actuator(1, objects.dash_n2_act_sub);
-}
-
-static void sync_filter_chips(int active_idx)
-{
-    lv_obj_t *btns[3] = { objects.dev_chip_all, objects.dev_chip_sens, objects.dev_chip_act };
-    lv_obj_t *lbls[3] = { objects.dev_chip_all_lbl, objects.dev_chip_sens_lbl, objects.dev_chip_act_lbl };
-    for (int i = 0; i < 3; i++) {
-        if (!btns[i] || !lbls[i]) continue;
-        if (i == active_idx) {
-            remove_style_btn_filter_idle(btns[i]);
-            add_style_btn_filter_active(btns[i]);
-            remove_style_label_chip_muted(lbls[i]);
-            add_style_label_chip_light(lbls[i]);
-        } else {
-            remove_style_btn_filter_active(btns[i]);
-            add_style_btn_filter_idle(btns[i]);
-            remove_style_label_chip_light(lbls[i]);
-            add_style_label_chip_muted(lbls[i]);
-        }
-    }
-}
-
-void action_filter_all(lv_event_t *e)
-{
-    (void)e;
-    ESP_LOGI(TAG, "Filtro Dispositivos: Todos");
-    sync_filter_chips(0);
-}
-
-void action_filter_sensors(lv_event_t *e)
-{
-    (void)e;
-    ESP_LOGI(TAG, "Filtro Dispositivos: Sensores");
-    sync_filter_chips(1);
-}
-
-void action_filter_actuators(lv_event_t *e)
-{
-    (void)e;
-    ESP_LOGI(TAG, "Filtro Dispositivos: Actuadores");
-    sync_filter_chips(2);
-}
-
-void action_save_config(lv_event_t *e)
-{
-    (void)e;
-    if (objects.cfg_slider_bright && objects.cfg_lbl_bright_val) {
-        int val = (int)lv_slider_get_value(objects.cfg_slider_bright);
-        char b[16];
-        snprintf(b, sizeof(b), "%d %%", val);
-        lv_label_set_text(objects.cfg_lbl_bright_val, b);
-    }
-    ESP_LOGI(TAG, "Configuracion aplicada");
 }

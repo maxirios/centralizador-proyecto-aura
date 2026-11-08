@@ -12,6 +12,11 @@ lv_style_t *get_style_screen_root_MAIN_DEFAULT();
 void add_style_screen_root(lv_obj_t *obj);
 void remove_style_screen_root(lv_obj_t *obj);
 
+// Style: PanelTransparent
+lv_style_t *get_style_panel_transparent_MAIN_DEFAULT();
+void add_style_panel_transparent(lv_obj_t *obj);
+void remove_style_panel_transparent(lv_obj_t *obj);
+
 // Style: PanelHeader
 lv_style_t *get_style_panel_header_MAIN_DEFAULT();
 void add_style_panel_header(lv_obj_t *obj);
@@ -77,10 +82,10 @@ lv_style_t *get_style_panel_badge_offline_MAIN_DEFAULT();
 void add_style_panel_badge_offline(lv_obj_t *obj);
 void remove_style_panel_badge_offline(lv_obj_t *obj);
 
-// Style: BtnHeaderTheme
-lv_style_t *get_style_btn_header_theme_MAIN_DEFAULT();
-void add_style_btn_header_theme(lv_obj_t *obj);
-void remove_style_btn_header_theme(lv_obj_t *obj);
+// Style: BtnTickerNav
+lv_style_t *get_style_btn_ticker_nav_MAIN_DEFAULT();
+void add_style_btn_ticker_nav(lv_obj_t *obj);
+void remove_style_btn_ticker_nav(lv_obj_t *obj);
 
 // Style: BtnNavTab
 lv_style_t *get_style_btn_nav_tab_MAIN_DEFAULT();
@@ -112,16 +117,6 @@ lv_style_t *get_style_btn_primary_aura_MAIN_DEFAULT();
 void add_style_btn_primary_aura(lv_obj_t *obj);
 void remove_style_btn_primary_aura(lv_obj_t *obj);
 
-// Style: BtnFilterActive
-lv_style_t *get_style_btn_filter_active_MAIN_DEFAULT();
-void add_style_btn_filter_active(lv_obj_t *obj);
-void remove_style_btn_filter_active(lv_obj_t *obj);
-
-// Style: BtnFilterIdle
-lv_style_t *get_style_btn_filter_idle_MAIN_DEFAULT();
-void add_style_btn_filter_idle(lv_obj_t *obj);
-void remove_style_btn_filter_idle(lv_obj_t *obj);
-
 // Style: LabelHeaderTitle
 lv_style_t *get_style_label_header_title_MAIN_DEFAULT();
 void add_style_label_header_title(lv_obj_t *obj);
@@ -141,6 +136,11 @@ void remove_style_label_header_badge(lv_obj_t *obj);
 lv_style_t *get_style_label_nav_tab_MAIN_DEFAULT();
 void add_style_label_nav_tab(lv_obj_t *obj);
 void remove_style_label_nav_tab(lv_obj_t *obj);
+
+// Style: LabelTickerCenter
+lv_style_t *get_style_label_ticker_center_MAIN_DEFAULT();
+void add_style_label_ticker_center(lv_obj_t *obj);
+void remove_style_label_ticker_center(lv_obj_t *obj);
 
 // Style: LabelRelayNum
 lv_style_t *get_style_label_relay_num_MAIN_DEFAULT();
@@ -202,16 +202,6 @@ lv_style_t *get_style_label_btn_muted_MAIN_DEFAULT();
 void add_style_label_btn_muted(lv_obj_t *obj);
 void remove_style_label_btn_muted(lv_obj_t *obj);
 
-// Style: LabelChipLight
-lv_style_t *get_style_label_chip_light_MAIN_DEFAULT();
-void add_style_label_chip_light(lv_obj_t *obj);
-void remove_style_label_chip_light(lv_obj_t *obj);
-
-// Style: LabelChipMuted
-lv_style_t *get_style_label_chip_muted_MAIN_DEFAULT();
-void add_style_label_chip_muted(lv_obj_t *obj);
-void remove_style_label_chip_muted(lv_obj_t *obj);
-
 // Style: BarSensorTeal
 lv_style_t *get_style_bar_sensor_teal_MAIN_DEFAULT();
 lv_style_t *get_style_bar_sensor_teal_INDICATOR_DEFAULT();
@@ -223,13 +213,6 @@ lv_style_t *get_style_bar_sensor_blue_MAIN_DEFAULT();
 lv_style_t *get_style_bar_sensor_blue_INDICATOR_DEFAULT();
 void add_style_bar_sensor_blue(lv_obj_t *obj);
 void remove_style_bar_sensor_blue(lv_obj_t *obj);
-
-// Style: SliderBrightness
-lv_style_t *get_style_slider_brightness_MAIN_DEFAULT();
-lv_style_t *get_style_slider_brightness_INDICATOR_DEFAULT();
-lv_style_t *get_style_slider_brightness_KNOB_DEFAULT();
-void add_style_slider_brightness(lv_obj_t *obj);
-void remove_style_slider_brightness(lv_obj_t *obj);
 
 // Style: SwitchAura
 lv_style_t *get_style_switch_aura_MAIN_DEFAULT();

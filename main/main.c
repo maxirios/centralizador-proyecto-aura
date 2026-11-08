@@ -107,6 +107,26 @@ static void tarea_demo_nodos(void *arg)
 #endif
 
 static volatile bool s_eez_ui_sucio = true;
+static int s_ticker_idx = 0;
+static TickType_t s_ticker_last_switch = 0;
+
+static void refresco_eez_ui_timer_cb(lv_timer_t *t);
+
+void ui_ticker_step(int delta)
+{
+    static ui_estado_aula_t snap;
+    if (ui_bridge_get_snapshot(&snap) != ESP_OK || snap.cant_nodos == 0) {
+        return;
+    }
+    int n = (int)snap.cant_nodos;
+    s_ticker_idx = (s_ticker_idx + delta) % n;
+    if (s_ticker_idx < 0) {
+        s_ticker_idx += n;
+    }
+    s_ticker_last_switch = xTaskGetTickCount();
+    s_eez_ui_sucio = true;
+    refresco_eez_ui_timer_cb(NULL);
+}
 
 static void on_ui_bridge_notif(ui_evento_tipo_t evento, const void *datos, void *user_data)
 {
@@ -157,7 +177,7 @@ static void init_local_relays_ui(void)
     uint8_t count = relay_ctrl_get_count();
     if (objects.dash_relays_sub) {
         char sub[32];
-        snprintf(sub, sizeof(sub), "%u CANALES GPIO", (unsigned)count);
+        snprintf(sub, sizeof(sub), "%u CANALES", (unsigned)count);
         lv_label_set_text(objects.dash_relays_sub, sub);
     }
 
@@ -192,9 +212,47 @@ static void init_local_relays_ui(void)
 }
 
 typedef struct {
+    lv_obj_t *card;
+    lv_obj_t *node_lbl;
+    lv_obj_t *badge;
+    lv_obj_t *badge_lbl;
+    lv_obj_t *act_title;
+    lv_obj_t *act_sub;
+    lv_obj_t *act_btn;
+} dash_act_widgets_t;
+
+static void poblar_dash_act_card(const dash_act_widgets_t *w, const ui_nodo_t *n)
+{
+    if (!w || !w->card || !n) return;
+    lv_obj_clear_flag(w->card, LV_OBJ_FLAG_HIDDEN);
+
+    const char *id_str = (n->adaptador[0] != '\0') ? n->adaptador : n->hw_id;
+    if (w->node_lbl) lv_label_set_text(w->node_lbl, id_str);
+
+    aplicar_badge_estado(w->badge, w->badge_lbl, n->conectado, n->conectado ? "ONLINE" : "OFFLINE");
+
+    char buf[64];
+    if (w->act_title) {
+        if (n->tiene_actuador && n->actuador_key[0] != '\0') {
+            snprintf(buf, sizeof(buf), "ACTUADOR (%s)", n->actuador_key);
+            lv_label_set_text(w->act_title, buf);
+        } else {
+            lv_label_set_text(w->act_title, "ACTUADOR REMOTO");
+        }
+    }
+    if (w->act_sub) {
+        if (n->tiene_actuador) {
+            lv_label_set_text(w->act_sub, n->actuador_estado ? "Estado: ENCENDIDO (ON)" : "Estado: APAGADO (OFF)");
+        } else {
+            lv_label_set_text(w->act_sub, "Toque para conmutar");
+        }
+    }
+    aplicar_btn_rele_estilo(w->act_btn, n->actuador_estado);
+}
+
+typedef struct {
     lv_obj_t *box;
     lv_obj_t *title;
-    lv_obj_t *sub;
     lv_obj_t *badge;
     lv_obj_t *badge_lbl;
     lv_obj_t *s1_val;
@@ -208,9 +266,6 @@ typedef struct {
     lv_obj_t *s4_bar;
     lv_obj_t *pres_badge;
     lv_obj_t *pres_lbl;
-    lv_obj_t *act_title;
-    lv_obj_t *act_sub;
-    lv_obj_t *act_btn;
 } dash_node_widgets_t;
 
 static void poblar_dash_node_box(const dash_node_widgets_t *w, const ui_nodo_t *n)
@@ -220,12 +275,6 @@ static void poblar_dash_node_box(const dash_node_widgets_t *w, const ui_nodo_t *
 
     const char *id_str = (n->adaptador[0] != '\0') ? n->adaptador : n->hw_id;
     if (w->title) lv_label_set_text(w->title, id_str);
-
-    if (w->sub) {
-        char sub[64];
-        snprintf(sub, sizeof(sub), "Nodo Hoja ESP-MESH | HW: %s", n->hw_id);
-        lv_label_set_text(w->sub, sub);
-    }
 
     aplicar_badge_estado(w->badge, w->badge_lbl, n->conectado, n->conectado ? "ONLINE" : "OFFLINE");
 
@@ -258,18 +307,18 @@ static void poblar_dash_node_box(const dash_node_widgets_t *w, const ui_nodo_t *
     }
 
     if (!isnan(n->luz_aula)) {
-        if (w->s4_lbl) lv_label_set_text(w->s4_lbl, "Luz Aula");
+        if (w->s4_lbl) lv_label_set_text(w->s4_lbl, "LUZ AULA");
         snprintf(buf, sizeof(buf), "%.0f lx", n->luz_aula);
         if (w->s4_val) lv_label_set_text(w->s4_val, buf);
         if (w->s4_bar) lv_bar_set_value(w->s4_bar, clamp_int((int)n->luz_aula, 0, 1000), LV_ANIM_OFF);
     } else if (!isnan(n->co2)) {
-        if (w->s4_lbl) lv_label_set_text(w->s4_lbl, "CO2 Amb.");
+        if (w->s4_lbl) lv_label_set_text(w->s4_lbl, "CO2 AMB.");
         snprintf(buf, sizeof(buf), "%.0f ppm", n->co2);
         if (w->s4_val) lv_label_set_text(w->s4_val, buf);
         int scaled = clamp_int((int)((n->co2 * 1000.0f) / 2000.0f), 0, 1000);
         if (w->s4_bar) lv_bar_set_value(w->s4_bar, scaled, LV_ANIM_OFF);
     } else {
-        if (w->s4_lbl) lv_label_set_text(w->s4_lbl, "Luz Aula");
+        if (w->s4_lbl) lv_label_set_text(w->s4_lbl, "LUZ AULA");
         if (w->s4_val) lv_label_set_text(w->s4_val, "-- lx");
         if (w->s4_bar) lv_bar_set_value(w->s4_bar, 0, LV_ANIM_OFF);
     }
@@ -281,40 +330,41 @@ static void poblar_dash_node_box(const dash_node_widgets_t *w, const ui_nodo_t *
     } else {
         aplicar_badge_estado(w->pres_badge, w->pres_lbl, false, "SIN DATO");
     }
-
-    if (w->act_title) {
-        if (n->tiene_actuador && n->actuador_key[0] != '\0') {
-            snprintf(buf, sizeof(buf), "ACTUADOR (%s)", n->actuador_key);
-            lv_label_set_text(w->act_title, buf);
-        } else {
-            lv_label_set_text(w->act_title, "ACTUADOR REMOTO");
-        }
-    }
-    if (w->act_sub) {
-        if (n->tiene_actuador) {
-            lv_label_set_text(w->act_sub, n->actuador_estado ? "Estado: ENCENDIDO (ON)" : "Estado: APAGADO (OFF)");
-        } else {
-            lv_label_set_text(w->act_sub, "Toque para conmutar");
-        }
-    }
-    aplicar_btn_rele_estilo(w->act_btn, n->actuador_estado);
 }
 
 static void refresco_eez_ui_timer_cb(lv_timer_t *t)
 {
     (void)t;
-    if (!s_eez_ui_sucio) return;
-    s_eez_ui_sucio = false;
+    TickType_t now = xTaskGetTickCount();
+    if (!s_eez_ui_sucio && (now - s_ticker_last_switch) < pdMS_TO_TICKS(5000)) {
+        return;
+    }
 
     static ui_estado_aula_t snap;
     if (ui_bridge_get_snapshot(&snap) != ESP_OK) return;
 
+    if (!s_eez_ui_sucio && snap.cant_nodos > 1) {
+        s_ticker_idx = (s_ticker_idx + 1) % snap.cant_nodos;
+        s_ticker_last_switch = now;
+    }
+    s_eez_ui_sucio = false;
+
     uint8_t online_cnt = 0;
-    uint8_t offline_cnt = 0;
     for (uint8_t i = 0; i < snap.cant_nodos; i++) {
         if (snap.nodos[i].conectado) online_cnt++;
-        else offline_cnt++;
     }
+
+    // Subtitulo de Aula en las 4 cabeceras ("Aula: Sin asignar" por defecto)
+    char aula_hdr[48];
+    if (snap.red.aula[0] != '\0') {
+        snprintf(aula_hdr, sizeof(aula_hdr), "Aula: %s", snap.red.aula);
+    } else {
+        snprintf(aula_hdr, sizeof(aula_hdr), "Aula: Sin asignar");
+    }
+    if (objects.dashboard_header__header_subtitle) lv_label_set_text(objects.dashboard_header__header_subtitle, aula_hdr);
+    if (objects.devices_header__header_subtitle)   lv_label_set_text(objects.devices_header__header_subtitle, aula_hdr);
+    if (objects.config_header__header_subtitle)    lv_label_set_text(objects.config_header__header_subtitle, aula_hdr);
+    if (objects.about_header__header_subtitle)     lv_label_set_text(objects.about_header__header_subtitle, aula_hdr);
 
     char mesh_txt[32];
     if (snap.red.modo_isla) {
@@ -327,8 +377,18 @@ static void refresco_eez_ui_timer_cb(lv_timer_t *t)
     if (objects.config_header__header_mesh_lbl)    lv_label_set_text(objects.config_header__header_mesh_lbl, mesh_txt);
     if (objects.about_header__header_mesh_lbl)     lv_label_set_text(objects.about_header__header_mesh_lbl, mesh_txt);
 
+    // Ticker estático con rotación por índice (< y >)
     if (objects.dash_ticker_lbl) {
-        lv_label_set_text(objects.dash_ticker_lbl, snap.ultimo_ticker);
+        if (snap.cant_nodos == 0) {
+            lv_label_set_text(objects.dash_ticker_lbl, "Sin lecturas en malla");
+        } else {
+            if (s_ticker_idx >= snap.cant_nodos || s_ticker_idx < 0) {
+                s_ticker_idx = 0;
+            }
+            const ui_nodo_t *tn = &snap.nodos[s_ticker_idx];
+            lv_label_set_text(objects.dash_ticker_lbl,
+                              tn->ticker_line[0] ? tn->ticker_line : snap.ultimo_ticker);
+        }
     }
 
     if (objects.dash_nodes_sec_tag) {
@@ -337,10 +397,28 @@ static void refresco_eez_ui_timer_cb(lv_timer_t *t)
         lv_label_set_text(objects.dash_nodes_sec_tag, tag_txt);
     }
 
+    dash_act_widgets_t a1 = {
+        .card = objects.dash_n1_act_card,
+        .node_lbl = objects.dash_n1_act_node,
+        .badge = objects.dash_n1_act_badge,
+        .badge_lbl = objects.dash_n1_act_badge_lbl,
+        .act_title = objects.dash_n1_act_title,
+        .act_sub = objects.dash_n1_act_sub,
+        .act_btn = objects.dash_n1_act_btn,
+    };
+    dash_act_widgets_t a2 = {
+        .card = objects.dash_n2_act_card,
+        .node_lbl = objects.dash_n2_act_node,
+        .badge = objects.dash_n2_act_badge,
+        .badge_lbl = objects.dash_n2_act_badge_lbl,
+        .act_title = objects.dash_n2_act_title,
+        .act_sub = objects.dash_n2_act_sub,
+        .act_btn = objects.dash_n2_act_btn,
+    };
+
     dash_node_widgets_t w1 = {
         .box = objects.dash_node1_box,
         .title = objects.dash_n1_title,
-        .sub = objects.dash_n1_sub,
         .badge = objects.dash_n1_badge,
         .badge_lbl = objects.dash_n1_badge_lbl,
         .s1_val = objects.dash_n1_s1_val, .s1_bar = objects.dash_n1_s1_bar,
@@ -348,12 +426,10 @@ static void refresco_eez_ui_timer_cb(lv_timer_t *t)
         .s3_val = objects.dash_n1_s3_val, .s3_bar = objects.dash_n1_s3_bar,
         .s4_lbl = objects.dash_n1_s4_lbl, .s4_val = objects.dash_n1_s4_val, .s4_bar = objects.dash_n1_s4_bar,
         .pres_badge = objects.dash_n1_pres_badge, .pres_lbl = objects.dash_n1_pres_lbl,
-        .act_title = objects.dash_n1_act_title, .act_sub = objects.dash_n1_act_sub, .act_btn = objects.dash_n1_act_btn,
     };
     dash_node_widgets_t w2 = {
         .box = objects.dash_node2_box,
         .title = objects.dash_n2_title,
-        .sub = objects.dash_n2_sub,
         .badge = objects.dash_n2_badge,
         .badge_lbl = objects.dash_n2_badge_lbl,
         .s1_val = objects.dash_n2_s1_val, .s1_bar = objects.dash_n2_s1_bar,
@@ -361,38 +437,33 @@ static void refresco_eez_ui_timer_cb(lv_timer_t *t)
         .s3_val = objects.dash_n2_s3_val, .s3_bar = objects.dash_n2_s3_bar,
         .s4_lbl = objects.dash_n2_s4_lbl, .s4_val = objects.dash_n2_s4_val, .s4_bar = objects.dash_n2_s4_bar,
         .pres_badge = objects.dash_n2_pres_badge, .pres_lbl = objects.dash_n2_pres_lbl,
-        .act_title = objects.dash_n2_act_title, .act_sub = objects.dash_n2_act_sub, .act_btn = objects.dash_n2_act_btn,
     };
 
     if (snap.cant_nodos == 0) {
+        if (objects.dash_act_empty_card) lv_obj_clear_flag(objects.dash_act_empty_card, LV_OBJ_FLAG_HIDDEN);
+        if (objects.dash_n1_act_card)    lv_obj_add_flag(objects.dash_n1_act_card, LV_OBJ_FLAG_HIDDEN);
+        if (objects.dash_n2_act_card)    lv_obj_add_flag(objects.dash_n2_act_card, LV_OBJ_FLAG_HIDDEN);
+
         if (objects.dash_empty_card) lv_obj_clear_flag(objects.dash_empty_card, LV_OBJ_FLAG_HIDDEN);
         if (objects.dash_node1_box)  lv_obj_add_flag(objects.dash_node1_box, LV_OBJ_FLAG_HIDDEN);
         if (objects.dash_node2_box)  lv_obj_add_flag(objects.dash_node2_box, LV_OBJ_FLAG_HIDDEN);
     } else {
-        if (objects.dash_empty_card) lv_obj_add_flag(objects.dash_empty_card, LV_OBJ_FLAG_HIDDEN);
+        if (objects.dash_act_empty_card) lv_obj_add_flag(objects.dash_act_empty_card, LV_OBJ_FLAG_HIDDEN);
+        if (objects.dash_empty_card)     lv_obj_add_flag(objects.dash_empty_card, LV_OBJ_FLAG_HIDDEN);
+
+        poblar_dash_act_card(&a1, &snap.nodos[0]);
         poblar_dash_node_box(&w1, &snap.nodos[0]);
+
         if (snap.cant_nodos >= 2) {
+            poblar_dash_act_card(&a2, &snap.nodos[1]);
             poblar_dash_node_box(&w2, &snap.nodos[1]);
-        } else if (objects.dash_node2_box) {
-            lv_obj_add_flag(objects.dash_node2_box, LV_OBJ_FLAG_HIDDEN);
+        } else {
+            if (objects.dash_n2_act_card) lv_obj_add_flag(objects.dash_n2_act_card, LV_OBJ_FLAG_HIDDEN);
+            if (objects.dash_node2_box)   lv_obj_add_flag(objects.dash_node2_box, LV_OBJ_FLAG_HIDDEN);
         }
     }
 
     char strip_buf[32];
-    if (objects.dash_net_online_lbl) {
-        snprintf(strip_buf, sizeof(strip_buf), "En linea: %u", (unsigned)online_cnt);
-        lv_label_set_text(objects.dash_net_online_lbl, strip_buf);
-    }
-    if (objects.dash_net_offline_lbl) {
-        snprintf(strip_buf, sizeof(strip_buf), "Sin senal: %u", (unsigned)offline_cnt);
-        lv_label_set_text(objects.dash_net_offline_lbl, strip_buf);
-    }
-    if (objects.dash_net_gw_lbl) {
-        const char *gw = snap.red.modo_isla ? "Gateway: ISLA" :
-                         (snap.red.gateway_conectado ? "Gateway: OK" : "Gateway: BUSCANDO");
-        lv_label_set_text(objects.dash_net_gw_lbl, gw);
-    }
-
     // Pantalla Dispositivos
     if (objects.dev_sec_total) {
         snprintf(strip_buf, sizeof(strip_buf), "%u Nodos Registrados", (unsigned)snap.cant_nodos);
@@ -445,8 +516,8 @@ static void refresco_eez_ui_timer_cb(lv_timer_t *t)
     }
 
     // Pantalla Config
-    if (objects.cfg_val_aula && snap.red.aula[0] != '\0') {
-        lv_label_set_text(objects.cfg_val_aula, snap.red.aula);
+    if (objects.cfg_val_aula) {
+        lv_label_set_text(objects.cfg_val_aula, snap.red.aula[0] != '\0' ? snap.red.aula : "Sin asignar");
     }
     if (objects.cfg_val_chan) {
         char ch_buf[48];
@@ -600,8 +671,8 @@ void app_main(void)
         if (err_ui == ESP_OK) {
             if (ui_port_lock(100)) {
                 ui_init();
-                if (objects.dash_ticker_lbl) {
-                    lv_label_set_long_mode(objects.dash_ticker_lbl, LV_LABEL_LONG_SCROLL_CIRCULAR);
+                if (objects.dash_view_sensores) {
+                    lv_obj_add_flag(objects.dash_view_sensores, LV_OBJ_FLAG_HIDDEN);
                 }
                 init_local_relays_ui();
                 s_eez_ui_sucio = true;
