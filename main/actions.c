@@ -8,6 +8,7 @@
 #include "relay_ctrl.h"
 
 static const char *TAG = "ui_actions";
+static bool s_dash_subtab_sensors = false;
 
 extern void ui_ticker_step(int delta);
 
@@ -51,53 +52,11 @@ static void sync_local_relay_btn(lv_obj_t *btn, bool on)
     lv_obj_invalidate(btn);
 }
 
-static void sync_dash_subtabs(bool show_actuators)
-{
-    if (objects.dash_view_actuadores) {
-        if (show_actuators) {
-            lv_obj_clear_flag(objects.dash_view_actuadores, LV_OBJ_FLAG_HIDDEN);
-        } else {
-            lv_obj_add_flag(objects.dash_view_actuadores, LV_OBJ_FLAG_HIDDEN);
-        }
-    }
-    if (objects.dash_view_sensores) {
-        if (show_actuators) {
-            lv_obj_add_flag(objects.dash_view_sensores, LV_OBJ_FLAG_HIDDEN);
-        } else {
-            lv_obj_clear_flag(objects.dash_view_sensores, LV_OBJ_FLAG_HIDDEN);
-        }
-    }
-
-    if (objects.dash_subtab_act_btn && objects.dash_subtab_sens_btn) {
-        if (show_actuators) {
-            remove_style_btn_toggle_off(objects.dash_subtab_act_btn);
-            add_style_btn_toggle_on(objects.dash_subtab_act_btn);
-            remove_style_label_btn_muted(objects.dash_subtab_act_lbl);
-            add_style_label_btn_light(objects.dash_subtab_act_lbl);
-
-            remove_style_btn_toggle_on(objects.dash_subtab_sens_btn);
-            add_style_btn_toggle_off(objects.dash_subtab_sens_btn);
-            remove_style_label_btn_light(objects.dash_subtab_sens_lbl);
-            add_style_label_btn_muted(objects.dash_subtab_sens_lbl);
-        } else {
-            remove_style_btn_toggle_on(objects.dash_subtab_act_btn);
-            add_style_btn_toggle_off(objects.dash_subtab_act_btn);
-            remove_style_label_btn_light(objects.dash_subtab_act_lbl);
-            add_style_label_btn_muted(objects.dash_subtab_act_lbl);
-
-            remove_style_btn_toggle_off(objects.dash_subtab_sens_btn);
-            add_style_btn_toggle_on(objects.dash_subtab_sens_btn);
-            remove_style_label_btn_muted(objects.dash_subtab_sens_lbl);
-            add_style_label_btn_light(objects.dash_subtab_sens_lbl);
-        }
-    }
-}
-
 void action_nav_dashboard(lv_event_t *e)
 {
     (void)e;
-    ESP_LOGI(TAG, "Navegar a Dashboard");
-    loadScreen(SCREEN_ID_DASHBOARD);
+    ESP_LOGI(TAG, "Navegar a Tablero");
+    loadScreen(s_dash_subtab_sensors ? SCREEN_ID_DASHBOARD_SENSORS : SCREEN_ID_DASHBOARD_ACTUATORS);
 }
 
 void action_nav_devices(lv_event_t *e)
@@ -110,7 +69,7 @@ void action_nav_devices(lv_event_t *e)
 void action_nav_config(lv_event_t *e)
 {
     (void)e;
-    ESP_LOGI(TAG, "Navegar a Config");
+    ESP_LOGI(TAG, "Navegar a Configuracion");
     loadScreen(SCREEN_ID_CONFIG);
 }
 
@@ -154,22 +113,23 @@ void action_ticker_next(lv_event_t *e)
 void action_dash_tab_actuators(lv_event_t *e)
 {
     (void)e;
-    ESP_LOGI(TAG, "Dashboard Sub-pestana: Actuadores");
-    sync_dash_subtabs(true);
+    s_dash_subtab_sensors = false;
+    ESP_LOGI(TAG, "Tablero -> Actuadores");
+    loadScreen(SCREEN_ID_DASHBOARD_ACTUATORS);
 }
 
 void action_dash_tab_sensors(lv_event_t *e)
 {
     (void)e;
-    ESP_LOGI(TAG, "Dashboard Sub-pestana: Sensores");
-    sync_dash_subtabs(false);
+    s_dash_subtab_sensors = true;
+    ESP_LOGI(TAG, "Tablero -> Sensores");
+    loadScreen(SCREEN_ID_DASHBOARD_SENSORS);
 }
 
 void action_toggle_local_relay1(lv_event_t *e)
 {
     (void)e;
     bool st = relay_ctrl_toggle(0);
-    set_var_act_vent_on(st);
     sync_local_relay_btn(objects.dash_relay_btn_1, st);
 }
 
@@ -177,7 +137,6 @@ void action_toggle_local_relay2(lv_event_t *e)
 {
     (void)e;
     bool st = relay_ctrl_toggle(1);
-    set_var_act_lights_on(st);
     sync_local_relay_btn(objects.dash_relay_btn_2, st);
 }
 
@@ -185,7 +144,6 @@ void action_toggle_local_relay3(lv_event_t *e)
 {
     (void)e;
     bool st = relay_ctrl_toggle(2);
-    set_var_act_led_on(st);
     sync_local_relay_btn(objects.dash_relay_btn_3, st);
 }
 

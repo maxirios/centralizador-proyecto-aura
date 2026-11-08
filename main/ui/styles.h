@@ -12,11 +12,6 @@ lv_style_t *get_style_screen_root_MAIN_DEFAULT();
 void add_style_screen_root(lv_obj_t *obj);
 void remove_style_screen_root(lv_obj_t *obj);
 
-// Style: PanelTransparent
-lv_style_t *get_style_panel_transparent_MAIN_DEFAULT();
-void add_style_panel_transparent(lv_obj_t *obj);
-void remove_style_panel_transparent(lv_obj_t *obj);
-
 // Style: PanelHeader
 lv_style_t *get_style_panel_header_MAIN_DEFAULT();
 void add_style_panel_header(lv_obj_t *obj);
@@ -26,6 +21,16 @@ void remove_style_panel_header(lv_obj_t *obj);
 lv_style_t *get_style_panel_ticker_bar_MAIN_DEFAULT();
 void add_style_panel_ticker_bar(lv_obj_t *obj);
 void remove_style_panel_ticker_bar(lv_obj_t *obj);
+
+// Style: PanelTickerChipBase
+lv_style_t *get_style_panel_ticker_chip_base_MAIN_DEFAULT();
+void add_style_panel_ticker_chip_base(lv_obj_t *obj);
+void remove_style_panel_ticker_chip_base(lv_obj_t *obj);
+
+// Style: PanelTickerChipAlt
+lv_style_t *get_style_panel_ticker_chip_alt_MAIN_DEFAULT();
+void add_style_panel_ticker_chip_alt(lv_obj_t *obj);
+void remove_style_panel_ticker_chip_alt(lv_obj_t *obj);
 
 // Style: PanelHeaderBadge
 lv_style_t *get_style_panel_header_badge_MAIN_DEFAULT();
@@ -82,10 +87,15 @@ lv_style_t *get_style_panel_badge_offline_MAIN_DEFAULT();
 void add_style_panel_badge_offline(lv_obj_t *obj);
 void remove_style_panel_badge_offline(lv_obj_t *obj);
 
-// Style: BtnTickerNav
-lv_style_t *get_style_btn_ticker_nav_MAIN_DEFAULT();
-void add_style_btn_ticker_nav(lv_obj_t *obj);
-void remove_style_btn_ticker_nav(lv_obj_t *obj);
+// Style: BtnTickerActive
+lv_style_t *get_style_btn_ticker_active_MAIN_DEFAULT();
+void add_style_btn_ticker_active(lv_obj_t *obj);
+void remove_style_btn_ticker_active(lv_obj_t *obj);
+
+// Style: BtnTickerDisabled
+lv_style_t *get_style_btn_ticker_disabled_MAIN_DEFAULT();
+void add_style_btn_ticker_disabled(lv_obj_t *obj);
+void remove_style_btn_ticker_disabled(lv_obj_t *obj);
 
 // Style: BtnNavTab
 lv_style_t *get_style_btn_nav_tab_MAIN_DEFAULT();
@@ -112,11 +122,6 @@ lv_style_t *get_style_btn_toggle_off_MAIN_DEFAULT();
 void add_style_btn_toggle_off(lv_obj_t *obj);
 void remove_style_btn_toggle_off(lv_obj_t *obj);
 
-// Style: BtnPrimaryAura
-lv_style_t *get_style_btn_primary_aura_MAIN_DEFAULT();
-void add_style_btn_primary_aura(lv_obj_t *obj);
-void remove_style_btn_primary_aura(lv_obj_t *obj);
-
 // Style: LabelHeaderTitle
 lv_style_t *get_style_label_header_title_MAIN_DEFAULT();
 void add_style_label_header_title(lv_obj_t *obj);
@@ -136,6 +141,16 @@ void remove_style_label_header_badge(lv_obj_t *obj);
 lv_style_t *get_style_label_nav_tab_MAIN_DEFAULT();
 void add_style_label_nav_tab(lv_obj_t *obj);
 void remove_style_label_nav_tab(lv_obj_t *obj);
+
+// Style: LabelTickerActive
+lv_style_t *get_style_label_ticker_active_MAIN_DEFAULT();
+void add_style_label_ticker_active(lv_obj_t *obj);
+void remove_style_label_ticker_active(lv_obj_t *obj);
+
+// Style: LabelTickerDisabled
+lv_style_t *get_style_label_ticker_disabled_MAIN_DEFAULT();
+void add_style_label_ticker_disabled(lv_obj_t *obj);
+void remove_style_label_ticker_disabled(lv_obj_t *obj);
 
 // Style: LabelTickerCenter
 lv_style_t *get_style_label_ticker_center_MAIN_DEFAULT();
@@ -213,13 +228,6 @@ lv_style_t *get_style_bar_sensor_blue_MAIN_DEFAULT();
 lv_style_t *get_style_bar_sensor_blue_INDICATOR_DEFAULT();
 void add_style_bar_sensor_blue(lv_obj_t *obj);
 void remove_style_bar_sensor_blue(lv_obj_t *obj);
-
-// Style: SwitchAura
-lv_style_t *get_style_switch_aura_MAIN_DEFAULT();
-lv_style_t *get_style_switch_aura_INDICATOR_CHECKED();
-lv_style_t *get_style_switch_aura_KNOB_DEFAULT();
-void add_style_switch_aura(lv_obj_t *obj);
-void remove_style_switch_aura(lv_obj_t *obj);
 
 #ifdef __cplusplus
 }

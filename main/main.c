@@ -21,7 +21,6 @@
 #include "bsp_touch.h"
 #include "ui_bridge.h"
 #include "ui_port.h"
-#include "ui_dashboard.h"
 #include "ui.h"
 #include "screens.h"
 #include "styles.h"
@@ -29,9 +28,6 @@
 #include "driver/gpio.h"
 
 #define PIN_BOTON GPIO_NUM_0
-
-#define ROUTER_SSID CONFIG_ROUTER_SSID
-#define ROUTER_PASS CONFIG_ROUTER_PASS
 
 static const char *TAG = "mesh";
 static esp_netif_t *netif_sta;
@@ -108,24 +104,69 @@ static void tarea_demo_nodos(void *arg)
 
 static volatile bool s_eez_ui_sucio = true;
 static int s_ticker_idx = 0;
-static TickType_t s_ticker_last_switch = 0;
 
 static void refresco_eez_ui_timer_cb(lv_timer_t *t);
+
+static int clamp_int(int v, int lo, int hi)
+{
+    if (v < lo) return lo;
+    if (v > hi) return hi;
+    return v;
+}
+
+#define MAX_TICKER_ITEMS 24
+
+static int extraer_items_ticker(const ui_estado_aula_t *snap, char items[][64], int max_items)
+{
+    int count = 0;
+    for (uint8_t i = 0; i < snap->cant_nodos && count < max_items; i++) {
+        const ui_nodo_t *n = &snap->nodos[i];
+        const char *id_full = (n->adaptador[0] != '\0') ? n->adaptador : n->hw_id;
+        size_t id_len = strlen(id_full);
+        const char *short_id = (id_len > 4) ? (id_full + id_len - 4) : id_full;
+
+        if (!isnan(n->temp) && count < max_items) {
+            snprintf(items[count++], 64, "[%.4s] Temp: %.1f °C", short_id, n->temp);
+        }
+        if (!isnan(n->hum) && count < max_items) {
+            snprintf(items[count++], 64, "[%.4s] Hum: %.0f %%", short_id, n->hum);
+        }
+        if (!isnan(n->luz_ventana) && count < max_items) {
+            snprintf(items[count++], 64, "[%.4s] Vent: %.0f lx", short_id, n->luz_ventana);
+        }
+        if (!isnan(n->luz_aula) && count < max_items) {
+            snprintf(items[count++], 64, "[%.4s] Aula: %.0f lx", short_id, n->luz_aula);
+        }
+        if (!isnan(n->co2) && count < max_items) {
+            snprintf(items[count++], 64, "[%.4s] CO2: %.0f ppm", short_id, n->co2);
+        }
+        if (n->presencia >= 0 && count < max_items) {
+            snprintf(items[count++], 64, "[%.4s] Pres: %s", short_id, n->presencia ? "SI" : "NO");
+        }
+        if (n->tiene_actuador && count < max_items) {
+            snprintf(items[count++], 64, "[%.4s] Rele: %s", short_id,
+                     n->actuador_estado ? "ENCENDIDO" : "APAGADO");
+        }
+    }
+    return count;
+}
 
 void ui_ticker_step(int delta)
 {
     static ui_estado_aula_t snap;
-    if (ui_bridge_get_snapshot(&snap) != ESP_OK || snap.cant_nodos == 0) {
+    if (ui_bridge_get_snapshot(&snap) != ESP_OK) {
         return;
     }
-    int n = (int)snap.cant_nodos;
-    s_ticker_idx = (s_ticker_idx + delta) % n;
-    if (s_ticker_idx < 0) {
-        s_ticker_idx += n;
+    char items[MAX_TICKER_ITEMS][64];
+    int total = extraer_items_ticker(&snap, items, MAX_TICKER_ITEMS);
+    int max_idx = (total > 2) ? (total - 2) : 0;
+
+    int next_idx = clamp_int(s_ticker_idx + delta, 0, max_idx);
+    if (next_idx != s_ticker_idx) {
+        s_ticker_idx = next_idx;
+        s_eez_ui_sucio = true;
+        refresco_eez_ui_timer_cb(NULL);
     }
-    s_ticker_last_switch = xTaskGetTickCount();
-    s_eez_ui_sucio = true;
-    refresco_eez_ui_timer_cb(NULL);
 }
 
 static void on_ui_bridge_notif(ui_evento_tipo_t evento, const void *datos, void *user_data)
@@ -134,13 +175,6 @@ static void on_ui_bridge_notif(ui_evento_tipo_t evento, const void *datos, void 
     (void)datos;
     (void)user_data;
     s_eez_ui_sucio = true;
-}
-
-static int clamp_int(int v, int lo, int hi)
-{
-    if (v < lo) return lo;
-    if (v > hi) return hi;
-    return v;
 }
 
 static void aplicar_badge_estado(lv_obj_t *panel, lv_obj_t *lbl, bool online, const char *txt)
@@ -169,6 +203,86 @@ static void aplicar_btn_rele_estilo(lv_obj_t *btn, bool on)
     } else {
         remove_style_btn_relay_squircle_on(btn);
         add_style_btn_relay_squircle_off(btn);
+    }
+}
+
+static void aplicar_btn_ticker_nav(lv_obj_t *btn, lv_obj_t *lbl, bool active)
+{
+    if (!btn || !lbl) return;
+    if (active) {
+        remove_style_btn_ticker_disabled(btn);
+        add_style_btn_ticker_active(btn);
+        remove_style_label_ticker_disabled(lbl);
+        add_style_label_ticker_active(lbl);
+    } else {
+        remove_style_btn_ticker_active(btn);
+        add_style_btn_ticker_disabled(btn);
+        remove_style_label_ticker_active(lbl);
+        add_style_label_ticker_disabled(lbl);
+    }
+}
+
+static void aplicar_chip_ticker_alt(lv_obj_t *chip, bool alt)
+{
+    if (!chip) return;
+    if (alt) {
+        remove_style_panel_ticker_chip_base(chip);
+        add_style_panel_ticker_chip_alt(chip);
+    } else {
+        remove_style_panel_ticker_chip_alt(chip);
+        add_style_panel_ticker_chip_base(chip);
+    }
+}
+
+typedef struct {
+    lv_obj_t *prev_btn;
+    lv_obj_t *prev_lbl;
+    lv_obj_t *chip_1;
+    lv_obj_t *lbl_1;
+    lv_obj_t *chip_2;
+    lv_obj_t *lbl_2;
+    lv_obj_t *next_btn;
+    lv_obj_t *next_lbl;
+    lv_obj_t *prog_bar;
+} ticker_bar_widgets_t;
+
+static void actualizar_ticker_instancia(const ticker_bar_widgets_t *tw,
+                                        char items[][64], int total, int idx, int max_idx)
+{
+    if (!tw) return;
+
+    if (total == 0) {
+        if (tw->lbl_1) lv_label_set_text(tw->lbl_1, "Sin lecturas en malla");
+        if (tw->lbl_2) lv_label_set_text(tw->lbl_2, "Esperando hojas...");
+        aplicar_chip_ticker_alt(tw->chip_1, true);
+        aplicar_chip_ticker_alt(tw->chip_2, false);
+        aplicar_btn_ticker_nav(tw->prev_btn, tw->prev_lbl, false);
+        aplicar_btn_ticker_nav(tw->next_btn, tw->next_lbl, false);
+        if (tw->prog_bar) lv_bar_set_value(tw->prog_bar, 0, LV_ANIM_OFF);
+        return;
+    }
+
+    if (tw->lbl_1) lv_label_set_text(tw->lbl_1, items[idx]);
+    if (tw->lbl_2) {
+        if (idx + 1 < total) {
+            lv_label_set_text(tw->lbl_2, items[idx + 1]);
+        } else {
+            lv_label_set_text(tw->lbl_2, "--");
+        }
+    }
+
+    // Intercalado uno sí y otro no según la paridad del índice actual
+    bool first_alt = ((idx % 2) == 0);
+    aplicar_chip_ticker_alt(tw->chip_1, first_alt);
+    aplicar_chip_ticker_alt(tw->chip_2, !first_alt);
+
+    // Tope no circular en ambos extremos
+    aplicar_btn_ticker_nav(tw->prev_btn, tw->prev_lbl, idx > 0);
+    aplicar_btn_ticker_nav(tw->next_btn, tw->next_lbl, idx < max_idx);
+
+    if (tw->prog_bar) {
+        int pct = (max_idx > 0) ? ((idx * 100) / max_idx) : 100;
+        lv_bar_set_value(tw->prog_bar, clamp_int(pct, 0, 100), LV_ANIM_OFF);
     }
 }
 
@@ -229,7 +343,7 @@ static void poblar_dash_act_card(const dash_act_widgets_t *w, const ui_nodo_t *n
     const char *id_str = (n->adaptador[0] != '\0') ? n->adaptador : n->hw_id;
     if (w->node_lbl) lv_label_set_text(w->node_lbl, id_str);
 
-    aplicar_badge_estado(w->badge, w->badge_lbl, n->conectado, n->conectado ? "ONLINE" : "OFFLINE");
+    aplicar_badge_estado(w->badge, w->badge_lbl, n->conectado, n->conectado ? "EN LINEA" : "SIN CONEXION");
 
     char buf[64];
     if (w->act_title) {
@@ -242,7 +356,7 @@ static void poblar_dash_act_card(const dash_act_widgets_t *w, const ui_nodo_t *n
     }
     if (w->act_sub) {
         if (n->tiene_actuador) {
-            lv_label_set_text(w->act_sub, n->actuador_estado ? "Estado: ENCENDIDO (ON)" : "Estado: APAGADO (OFF)");
+            lv_label_set_text(w->act_sub, n->actuador_estado ? "Estado: ENCENDIDO" : "Estado: APAGADO");
         } else {
             lv_label_set_text(w->act_sub, "Toque para conmutar");
         }
@@ -276,7 +390,7 @@ static void poblar_dash_node_box(const dash_node_widgets_t *w, const ui_nodo_t *
     const char *id_str = (n->adaptador[0] != '\0') ? n->adaptador : n->hw_id;
     if (w->title) lv_label_set_text(w->title, id_str);
 
-    aplicar_badge_estado(w->badge, w->badge_lbl, n->conectado, n->conectado ? "ONLINE" : "OFFLINE");
+    aplicar_badge_estado(w->badge, w->badge_lbl, n->conectado, n->conectado ? "EN LINEA" : "SIN CONEXION");
 
     char buf[64];
     if (!isnan(n->temp)) {
@@ -335,36 +449,29 @@ static void poblar_dash_node_box(const dash_node_widgets_t *w, const ui_nodo_t *
 static void refresco_eez_ui_timer_cb(lv_timer_t *t)
 {
     (void)t;
-    TickType_t now = xTaskGetTickCount();
-    if (!s_eez_ui_sucio && (now - s_ticker_last_switch) < pdMS_TO_TICKS(5000)) {
-        return;
-    }
+    if (!s_eez_ui_sucio) return;
+    s_eez_ui_sucio = false;
 
     static ui_estado_aula_t snap;
     if (ui_bridge_get_snapshot(&snap) != ESP_OK) return;
-
-    if (!s_eez_ui_sucio && snap.cant_nodos > 1) {
-        s_ticker_idx = (s_ticker_idx + 1) % snap.cant_nodos;
-        s_ticker_last_switch = now;
-    }
-    s_eez_ui_sucio = false;
 
     uint8_t online_cnt = 0;
     for (uint8_t i = 0; i < snap.cant_nodos; i++) {
         if (snap.nodos[i].conectado) online_cnt++;
     }
 
-    // Subtitulo de Aula en las 4 cabeceras ("Aula: Sin asignar" por defecto)
+    // Subtitulo de Aula en las 5 cabeceras ("Aula: Sin asignar" por defecto)
     char aula_hdr[48];
     if (snap.red.aula[0] != '\0') {
         snprintf(aula_hdr, sizeof(aula_hdr), "Aula: %s", snap.red.aula);
     } else {
         snprintf(aula_hdr, sizeof(aula_hdr), "Aula: Sin asignar");
     }
-    if (objects.dashboard_header__header_subtitle) lv_label_set_text(objects.dashboard_header__header_subtitle, aula_hdr);
-    if (objects.devices_header__header_subtitle)   lv_label_set_text(objects.devices_header__header_subtitle, aula_hdr);
-    if (objects.config_header__header_subtitle)    lv_label_set_text(objects.config_header__header_subtitle, aula_hdr);
-    if (objects.about_header__header_subtitle)     lv_label_set_text(objects.about_header__header_subtitle, aula_hdr);
+    if (objects.dashboard_act_header__header_subtitle)  lv_label_set_text(objects.dashboard_act_header__header_subtitle, aula_hdr);
+    if (objects.dashboard_sens_header__header_subtitle) lv_label_set_text(objects.dashboard_sens_header__header_subtitle, aula_hdr);
+    if (objects.devices_header__header_subtitle)        lv_label_set_text(objects.devices_header__header_subtitle, aula_hdr);
+    if (objects.config_header__header_subtitle)         lv_label_set_text(objects.config_header__header_subtitle, aula_hdr);
+    if (objects.about_header__header_subtitle)          lv_label_set_text(objects.about_header__header_subtitle, aula_hdr);
 
     char mesh_txt[32];
     if (snap.red.modo_isla) {
@@ -372,24 +479,42 @@ static void refresco_eez_ui_timer_cb(lv_timer_t *t)
     } else {
         snprintf(mesh_txt, sizeof(mesh_txt), "Mesh (%u)", (unsigned)online_cnt);
     }
-    if (objects.dashboard_header__header_mesh_lbl) lv_label_set_text(objects.dashboard_header__header_mesh_lbl, mesh_txt);
-    if (objects.devices_header__header_mesh_lbl)   lv_label_set_text(objects.devices_header__header_mesh_lbl, mesh_txt);
-    if (objects.config_header__header_mesh_lbl)    lv_label_set_text(objects.config_header__header_mesh_lbl, mesh_txt);
-    if (objects.about_header__header_mesh_lbl)     lv_label_set_text(objects.about_header__header_mesh_lbl, mesh_txt);
+    if (objects.dashboard_act_header__header_mesh_lbl)  lv_label_set_text(objects.dashboard_act_header__header_mesh_lbl, mesh_txt);
+    if (objects.dashboard_sens_header__header_mesh_lbl) lv_label_set_text(objects.dashboard_sens_header__header_mesh_lbl, mesh_txt);
+    if (objects.devices_header__header_mesh_lbl)        lv_label_set_text(objects.devices_header__header_mesh_lbl, mesh_txt);
+    if (objects.config_header__header_mesh_lbl)         lv_label_set_text(objects.config_header__header_mesh_lbl, mesh_txt);
+    if (objects.about_header__header_mesh_lbl)          lv_label_set_text(objects.about_header__header_mesh_lbl, mesh_txt);
 
-    // Ticker estático con rotación por índice (< y >)
-    if (objects.dash_ticker_lbl) {
-        if (snap.cant_nodos == 0) {
-            lv_label_set_text(objects.dash_ticker_lbl, "Sin lecturas en malla");
-        } else {
-            if (s_ticker_idx >= snap.cant_nodos || s_ticker_idx < 0) {
-                s_ticker_idx = 0;
-            }
-            const ui_nodo_t *tn = &snap.nodos[s_ticker_idx];
-            lv_label_set_text(objects.dash_ticker_lbl,
-                              tn->ticker_line[0] ? tn->ticker_line : snap.ultimo_ticker);
-        }
-    }
+    // Actualizar Ticker en ambas páginas del Tablero (cuadritos intercalados + barra de progreso + topes)
+    char ticker_items[MAX_TICKER_ITEMS][64];
+    int total_items = extraer_items_ticker(&snap, ticker_items, MAX_TICKER_ITEMS);
+    int max_idx = (total_items > 2) ? (total_items - 2) : 0;
+    s_ticker_idx = clamp_int(s_ticker_idx, 0, max_idx);
+
+    ticker_bar_widgets_t tw_act = {
+        .prev_btn = objects.dashboard_act_ticker__ticker_prev_btn,
+        .prev_lbl = objects.dashboard_act_ticker__ticker_prev_lbl,
+        .chip_1   = objects.dashboard_act_ticker__ticker_chip_1,
+        .lbl_1    = objects.dashboard_act_ticker__ticker_chip_lbl_1,
+        .chip_2   = objects.dashboard_act_ticker__ticker_chip_2,
+        .lbl_2    = objects.dashboard_act_ticker__ticker_chip_lbl_2,
+        .next_btn = objects.dashboard_act_ticker__ticker_next_btn,
+        .next_lbl = objects.dashboard_act_ticker__ticker_next_lbl,
+        .prog_bar = objects.dashboard_act_ticker__ticker_prog_bar,
+    };
+    ticker_bar_widgets_t tw_sens = {
+        .prev_btn = objects.dashboard_sens_ticker__ticker_prev_btn,
+        .prev_lbl = objects.dashboard_sens_ticker__ticker_prev_lbl,
+        .chip_1   = objects.dashboard_sens_ticker__ticker_chip_1,
+        .lbl_1    = objects.dashboard_sens_ticker__ticker_chip_lbl_1,
+        .chip_2   = objects.dashboard_sens_ticker__ticker_chip_2,
+        .lbl_2    = objects.dashboard_sens_ticker__ticker_chip_lbl_2,
+        .next_btn = objects.dashboard_sens_ticker__ticker_next_btn,
+        .next_lbl = objects.dashboard_sens_ticker__ticker_next_lbl,
+        .prog_bar = objects.dashboard_sens_ticker__ticker_prog_bar,
+    };
+    actualizar_ticker_instancia(&tw_act, ticker_items, total_items, s_ticker_idx, max_idx);
+    actualizar_ticker_instancia(&tw_sens, ticker_items, total_items, s_ticker_idx, max_idx);
 
     if (objects.dash_nodes_sec_tag) {
         char tag_txt[32];
@@ -492,13 +617,13 @@ static void refresco_eez_ui_timer_cb(lv_timer_t *t)
                 lv_obj_clear_flag(dev_cards[i], LV_OBJ_FLAG_HIDDEN);
                 const char *id_str = (n->adaptador[0] != '\0') ? n->adaptador : n->hw_id;
                 if (dev_ids[i]) lv_label_set_text(dev_ids[i], id_str);
-                aplicar_badge_estado(dev_bdgs[i], dev_blbls[i], n->conectado, n->conectado ? "ONLINE" : "OFFLINE");
+                aplicar_badge_estado(dev_bdgs[i], dev_blbls[i], n->conectado, n->conectado ? "EN LINEA" : "SIN CONEXION");
                 if (dev_vals[i]) lv_label_set_text(dev_vals[i], n->ticker_line);
                 if (dev_acts[i]) {
                     char act_buf[64];
                     if (n->tiene_actuador) {
                         snprintf(act_buf, sizeof(act_buf), "Actuador %s: %s",
-                                 n->actuador_key, n->actuador_estado ? "ON" : "OFF");
+                                 n->actuador_key, n->actuador_estado ? "ENCENDIDO" : "APAGADO");
                     } else {
                         snprintf(act_buf, sizeof(act_buf), "Actuador: no reportado");
                     }
@@ -515,7 +640,7 @@ static void refresco_eez_ui_timer_cb(lv_timer_t *t)
         }
     }
 
-    // Pantalla Config
+    // Pantalla Configuracion
     if (objects.cfg_val_aula) {
         lv_label_set_text(objects.cfg_val_aula, snap.red.aula[0] != '\0' ? snap.red.aula : "Sin asignar");
     }
@@ -671,9 +796,6 @@ void app_main(void)
         if (err_ui == ESP_OK) {
             if (ui_port_lock(100)) {
                 ui_init();
-                if (objects.dash_view_sensores) {
-                    lv_obj_add_flag(objects.dash_view_sensores, LV_OBJ_FLAG_HIDDEN);
-                }
                 init_local_relays_ui();
                 s_eez_ui_sucio = true;
                 refresco_eez_ui_timer_cb(NULL);

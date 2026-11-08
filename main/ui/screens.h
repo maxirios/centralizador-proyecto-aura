@@ -11,37 +11,43 @@ extern "C" {
 
 enum ScreensEnum {
     _SCREEN_ID_FIRST = 1,
-    SCREEN_ID_DASHBOARD = 1,
-    SCREEN_ID_DEVICES = 2,
-    SCREEN_ID_CONFIG = 3,
-    SCREEN_ID_ABOUT = 4,
-    _SCREEN_ID_LAST = 4
+    SCREEN_ID_DASHBOARD_ACTUATORS = 1,
+    SCREEN_ID_DASHBOARD_SENSORS = 2,
+    SCREEN_ID_DEVICES = 3,
+    SCREEN_ID_CONFIG = 4,
+    SCREEN_ID_ABOUT = 5,
+    _SCREEN_ID_LAST = 5
 };
 
 typedef struct _objects_t {
-    lv_obj_t *dashboard;
+    lv_obj_t *dashboard_actuators;
+    lv_obj_t *dashboard_sensors;
     lv_obj_t *devices;
     lv_obj_t *config;
     lv_obj_t *about;
-    lv_obj_t *dashboard_header;
-    lv_obj_t *dashboard_header__header_bar_root;
-    lv_obj_t *dashboard_header__header_logo;
-    lv_obj_t *dashboard_header__header_title;
-    lv_obj_t *dashboard_header__header_subtitle;
-    lv_obj_t *dashboard_header__header_mesh_badge;
-    lv_obj_t *dashboard_header__header_mesh_dot;
-    lv_obj_t *dashboard_header__header_mesh_lbl;
-    lv_obj_t *dash_ticker_bar;
-    lv_obj_t *dash_ticker_prev_btn;
-    lv_obj_t *dash_ticker_prev_lbl;
-    lv_obj_t *dash_ticker_lbl;
-    lv_obj_t *dash_ticker_next_btn;
-    lv_obj_t *dash_ticker_next_lbl;
-    lv_obj_t *dash_subtab_act_btn;
-    lv_obj_t *dash_subtab_act_lbl;
-    lv_obj_t *dash_subtab_sens_btn;
-    lv_obj_t *dash_subtab_sens_lbl;
-    lv_obj_t *dash_view_actuadores;
+    lv_obj_t *dashboard_act_header;
+    lv_obj_t *dashboard_act_header__header_bar_root;
+    lv_obj_t *dashboard_act_header__header_logo;
+    lv_obj_t *dashboard_act_header__header_title;
+    lv_obj_t *dashboard_act_header__header_subtitle;
+    lv_obj_t *dashboard_act_header__header_mesh_badge;
+    lv_obj_t *dashboard_act_header__header_mesh_dot;
+    lv_obj_t *dashboard_act_header__header_mesh_lbl;
+    lv_obj_t *dashboard_act_ticker;
+    lv_obj_t *dashboard_act_ticker__ticker_bar_root;
+    lv_obj_t *dashboard_act_ticker__ticker_prev_btn;
+    lv_obj_t *dashboard_act_ticker__ticker_prev_lbl;
+    lv_obj_t *dashboard_act_ticker__ticker_chip_1;
+    lv_obj_t *dashboard_act_ticker__ticker_chip_lbl_1;
+    lv_obj_t *dashboard_act_ticker__ticker_chip_2;
+    lv_obj_t *dashboard_act_ticker__ticker_chip_lbl_2;
+    lv_obj_t *dashboard_act_ticker__ticker_next_btn;
+    lv_obj_t *dashboard_act_ticker__ticker_next_lbl;
+    lv_obj_t *dashboard_act_ticker__ticker_prog_bar;
+    lv_obj_t *dash_act_subtab_act_btn;
+    lv_obj_t *dash_act_subtab_act_lbl;
+    lv_obj_t *dash_act_subtab_sens_btn;
+    lv_obj_t *dash_act_subtab_sens_lbl;
     lv_obj_t *dash_relays_card;
     lv_obj_t *dash_relays_title;
     lv_obj_t *dash_relays_sub;
@@ -93,7 +99,45 @@ typedef struct _objects_t {
     lv_obj_t *dash_n2_act_sub;
     lv_obj_t *dash_n2_act_btn;
     lv_obj_t *dash_n2_act_ico;
-    lv_obj_t *dash_view_sensores;
+    lv_obj_t *dashboard_act_bottom_nav;
+    lv_obj_t *dashboard_act_bottom_nav__bottom_nav_root;
+    lv_obj_t *dashboard_act_bottom_nav__nav_top_line;
+    lv_obj_t *dashboard_act_bottom_nav__nav_btn_dashboard;
+    lv_obj_t *dashboard_act_bottom_nav__nav_ico_dashboard;
+    lv_obj_t *dashboard_act_bottom_nav__nav_lbl_dashboard;
+    lv_obj_t *dashboard_act_bottom_nav__nav_btn_devices;
+    lv_obj_t *dashboard_act_bottom_nav__nav_ico_devices;
+    lv_obj_t *dashboard_act_bottom_nav__nav_lbl_devices;
+    lv_obj_t *dashboard_act_bottom_nav__nav_btn_config;
+    lv_obj_t *dashboard_act_bottom_nav__nav_ico_config;
+    lv_obj_t *dashboard_act_bottom_nav__nav_lbl_config;
+    lv_obj_t *dashboard_act_bottom_nav__nav_btn_about;
+    lv_obj_t *dashboard_act_bottom_nav__nav_ico_about;
+    lv_obj_t *dashboard_act_bottom_nav__nav_lbl_about;
+    lv_obj_t *dash_act_nav_active_bar;
+    lv_obj_t *dashboard_sens_header;
+    lv_obj_t *dashboard_sens_header__header_bar_root;
+    lv_obj_t *dashboard_sens_header__header_logo;
+    lv_obj_t *dashboard_sens_header__header_title;
+    lv_obj_t *dashboard_sens_header__header_subtitle;
+    lv_obj_t *dashboard_sens_header__header_mesh_badge;
+    lv_obj_t *dashboard_sens_header__header_mesh_dot;
+    lv_obj_t *dashboard_sens_header__header_mesh_lbl;
+    lv_obj_t *dashboard_sens_ticker;
+    lv_obj_t *dashboard_sens_ticker__ticker_bar_root;
+    lv_obj_t *dashboard_sens_ticker__ticker_prev_btn;
+    lv_obj_t *dashboard_sens_ticker__ticker_prev_lbl;
+    lv_obj_t *dashboard_sens_ticker__ticker_chip_1;
+    lv_obj_t *dashboard_sens_ticker__ticker_chip_lbl_1;
+    lv_obj_t *dashboard_sens_ticker__ticker_chip_2;
+    lv_obj_t *dashboard_sens_ticker__ticker_chip_lbl_2;
+    lv_obj_t *dashboard_sens_ticker__ticker_next_btn;
+    lv_obj_t *dashboard_sens_ticker__ticker_next_lbl;
+    lv_obj_t *dashboard_sens_ticker__ticker_prog_bar;
+    lv_obj_t *dash_sens_subtab_act_btn;
+    lv_obj_t *dash_sens_subtab_act_lbl;
+    lv_obj_t *dash_sens_subtab_sens_btn;
+    lv_obj_t *dash_sens_subtab_sens_lbl;
     lv_obj_t *dash_nodes_sec_title;
     lv_obj_t *dash_nodes_sec_tag;
     lv_obj_t *dash_empty_card;
@@ -141,22 +185,22 @@ typedef struct _objects_t {
     lv_obj_t *dash_n2_pres_title;
     lv_obj_t *dash_n2_pres_badge;
     lv_obj_t *dash_n2_pres_lbl;
-    lv_obj_t *dashboard_bottom_nav;
-    lv_obj_t *dashboard_bottom_nav__bottom_nav_root;
-    lv_obj_t *dashboard_bottom_nav__nav_top_line;
-    lv_obj_t *dashboard_bottom_nav__nav_btn_dashboard;
-    lv_obj_t *dashboard_bottom_nav__nav_ico_dashboard;
-    lv_obj_t *dashboard_bottom_nav__nav_lbl_dashboard;
-    lv_obj_t *dashboard_bottom_nav__nav_btn_devices;
-    lv_obj_t *dashboard_bottom_nav__nav_ico_devices;
-    lv_obj_t *dashboard_bottom_nav__nav_lbl_devices;
-    lv_obj_t *dashboard_bottom_nav__nav_btn_config;
-    lv_obj_t *dashboard_bottom_nav__nav_ico_config;
-    lv_obj_t *dashboard_bottom_nav__nav_lbl_config;
-    lv_obj_t *dashboard_bottom_nav__nav_btn_about;
-    lv_obj_t *dashboard_bottom_nav__nav_ico_about;
-    lv_obj_t *dashboard_bottom_nav__nav_lbl_about;
-    lv_obj_t *dash_nav_active_bar;
+    lv_obj_t *dashboard_sens_bottom_nav;
+    lv_obj_t *dashboard_sens_bottom_nav__bottom_nav_root;
+    lv_obj_t *dashboard_sens_bottom_nav__nav_top_line;
+    lv_obj_t *dashboard_sens_bottom_nav__nav_btn_dashboard;
+    lv_obj_t *dashboard_sens_bottom_nav__nav_ico_dashboard;
+    lv_obj_t *dashboard_sens_bottom_nav__nav_lbl_dashboard;
+    lv_obj_t *dashboard_sens_bottom_nav__nav_btn_devices;
+    lv_obj_t *dashboard_sens_bottom_nav__nav_ico_devices;
+    lv_obj_t *dashboard_sens_bottom_nav__nav_lbl_devices;
+    lv_obj_t *dashboard_sens_bottom_nav__nav_btn_config;
+    lv_obj_t *dashboard_sens_bottom_nav__nav_ico_config;
+    lv_obj_t *dashboard_sens_bottom_nav__nav_lbl_config;
+    lv_obj_t *dashboard_sens_bottom_nav__nav_btn_about;
+    lv_obj_t *dashboard_sens_bottom_nav__nav_ico_about;
+    lv_obj_t *dashboard_sens_bottom_nav__nav_lbl_about;
+    lv_obj_t *dash_sens_nav_active_bar;
     lv_obj_t *devices_header;
     lv_obj_t *devices_header__header_bar_root;
     lv_obj_t *devices_header__header_logo;
@@ -241,10 +285,6 @@ typedef struct _objects_t {
     lv_obj_t *cfg_gw_mac;
     lv_obj_t *cfg_gw_badge;
     lv_obj_t *cfg_gw_badge_lbl;
-    lv_obj_t *cfg_row_island;
-    lv_obj_t *cfg_island_title;
-    lv_obj_t *cfg_island_sub;
-    lv_obj_t *cfg_island_sw;
     lv_obj_t *config_bottom_nav;
     lv_obj_t *config_bottom_nav__bottom_nav_root;
     lv_obj_t *config_bottom_nav__nav_top_line;
@@ -305,8 +345,11 @@ typedef struct _objects_t {
 
 extern objects_t objects;
 
-void create_screen_dashboard();
-void tick_screen_dashboard();
+void create_screen_dashboard_actuators();
+void tick_screen_dashboard_actuators();
+
+void create_screen_dashboard_sensors();
+void tick_screen_dashboard_sensors();
 
 void create_screen_devices();
 void tick_screen_devices();
@@ -319,6 +362,9 @@ void tick_screen_about();
 
 void create_user_widget_header_bar(lv_obj_t *parent_obj, int startWidgetIndex);
 void tick_user_widget_header_bar(int startWidgetIndex);
+
+void create_user_widget_ticker_bar(lv_obj_t *parent_obj, int startWidgetIndex);
+void tick_user_widget_ticker_bar(int startWidgetIndex);
 
 void create_user_widget_bottom_nav(lv_obj_t *parent_obj, int startWidgetIndex);
 void tick_user_widget_bottom_nav(int startWidgetIndex);
@@ -348,6 +394,7 @@ enum Colors {
     COLOR_ID_BG_HEADER,
     COLOR_ID_BG_NAV,
     COLOR_ID_BG_INPUT,
+    COLOR_ID_BG_TICKER_ALT,
     COLOR_ID_BG_BADGE_TEAL,
     COLOR_ID_BG_BADGE_DANGER,
     COLOR_ID_BG_BADGE_ORANGE,
@@ -359,7 +406,7 @@ enum Colors {
     COLOR_ID_TEXT_HEADER_SUB,
 };
 void change_color_theme(uint32_t themeIndex);
-extern uint32_t theme_colors[2][22];
+extern uint32_t theme_colors[2][23];
 extern uint32_t active_theme_index;
 
 #ifdef __cplusplus

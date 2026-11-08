@@ -94,7 +94,7 @@ static void formatear_ticker_nodo(ui_nodo_t *n)
         len += snprintf(buf + len, sizeof(buf) - len, "%s%s: %s",
                         primero ? "" : "  |  ",
                         n->actuador_key[0] ? n->actuador_key : "act",
-                        n->actuador_estado ? "ON" : "OFF");
+                        n->actuador_estado ? "ENCENDIDO" : "APAGADO");
     }
 
     strlcpy(n->ticker_line, buf, sizeof(n->ticker_line));
