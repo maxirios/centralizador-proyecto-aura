@@ -9,6 +9,11 @@ extern "C" {
 
 extern const lv_img_dsc_t img_logo_header_48;
 extern const lv_img_dsc_t img_logo_about_240;
+extern const lv_img_dsc_t img_icon_power_20;
+extern const lv_img_dsc_t img_icon_dash_22;
+extern const lv_img_dsc_t img_icon_devices_22;
+extern const lv_img_dsc_t img_icon_config_22;
+extern const lv_img_dsc_t img_icon_about_22;
 
 #ifndef EXT_IMG_DESC_T
 #define EXT_IMG_DESC_T
@@ -18,7 +23,7 @@ typedef struct _ext_img_desc_t {
 } ext_img_desc_t;
 #endif
 
-extern const ext_img_desc_t images[2];
+extern const ext_img_desc_t images[7];
 
 #ifdef __cplusplus
 }

@@ -11,6 +11,11 @@
     "styles.h",
     "ui.c",
     "ui.h",
+    "ui_image_icon_about_22.c",
+    "ui_image_icon_config_22.c",
+    "ui_image_icon_dash_22.c",
+    "ui_image_icon_devices_22.c",
+    "ui_image_icon_power_20.c",
     "ui_image_logo_about_240.c",
     "ui_image_logo_header_48.c",
     "vars.h"
