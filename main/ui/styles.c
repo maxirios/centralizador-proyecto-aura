@@ -85,7 +85,7 @@ void init_style_panel_ticker_bar_MAIN_DEFAULT(lv_style_t *style) {
     lv_style_set_border_color(style, lv_color_hex(theme_colors[active_theme_index][18]));
     lv_style_set_border_width(style, 1);
     lv_style_set_border_opa(style, 255);
-    lv_style_set_radius(style, 0);
+    lv_style_set_radius(style, 8);
     lv_style_set_pad_top(style, 0);
     lv_style_set_pad_bottom(style, 0);
     lv_style_set_pad_left(style, 0);
@@ -1063,7 +1063,7 @@ void remove_style_label_ticker_center(lv_obj_t *obj) {
 //
 
 void init_style_label_relay_num_MAIN_DEFAULT(lv_style_t *style) {
-    lv_style_set_text_color(style, lv_color_hex(theme_colors[active_theme_index][2]));
+    lv_style_set_text_color(style, lv_color_hex(theme_colors[active_theme_index][20]));
     lv_style_set_text_font(style, &lv_font_montserrat_12);
     lv_style_set_text_align(style, LV_TEXT_ALIGN_CENTER);
 };

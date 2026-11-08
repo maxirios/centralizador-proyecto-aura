@@ -10,7 +10,7 @@
 static const char *TAG = "ui_actions";
 static bool s_dash_subtab_sensors = false;
 
-extern void ui_ticker_step(int delta);
+extern void ui_ticker_step(lv_obj_t *target_btn, int delta);
 
 static void sync_theme_buttons(bool dark)
 {
@@ -100,14 +100,14 @@ void action_set_theme_dark(lv_event_t *e)
 
 void action_ticker_prev(lv_event_t *e)
 {
-    (void)e;
-    ui_ticker_step(-1);
+    lv_obj_t *btn = e ? lv_event_get_target(e) : NULL;
+    ui_ticker_step(btn, -1);
 }
 
 void action_ticker_next(lv_event_t *e)
 {
-    (void)e;
-    ui_ticker_step(1);
+    lv_obj_t *btn = e ? lv_event_get_target(e) : NULL;
+    ui_ticker_step(btn, 1);
 }
 
 void action_dash_tab_actuators(lv_event_t *e)

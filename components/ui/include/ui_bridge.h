@@ -30,7 +30,6 @@ typedef struct {
     bool tiene_actuador;
     char actuador_key[24];  // Clave del actuador ("rele_canal1", "led", "rele")
     bool actuador_estado;
-    char ticker_line[160];  // Resumen formateado con procedencia para el Ticker
     char raw_values[AURA_VALUES_MAX + 1];
 } ui_nodo_t;
 
@@ -47,7 +46,6 @@ typedef struct {
     ui_red_estado_t red;
     uint8_t cant_nodos;
     ui_nodo_t nodos[MESH_HOJAS_MAX];
-    char ultimo_ticker[160];
 } ui_estado_aula_t;
 
 // Tipo de evento notificado a observadores de UI

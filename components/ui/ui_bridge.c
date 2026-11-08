@@ -56,51 +56,6 @@ static ui_nodo_t *buscar_o_crear_nodo(const uint8_t mac[6])
     return n;
 }
 
-static void formatear_ticker_nodo(ui_nodo_t *n)
-{
-    char buf[160] = "";
-    size_t len = 0;
-
-    if (n->adaptador[0] != '\0') {
-        len += snprintf(buf + len, sizeof(buf) - len, "[%s] ", n->adaptador);
-    }
-
-    bool primero = true;
-    if (!isnan(n->temp)) {
-        len += snprintf(buf + len, sizeof(buf) - len, "%s%.1f °C", primero ? "" : "  |  ", n->temp);
-        primero = false;
-    }
-    if (!isnan(n->hum)) {
-        len += snprintf(buf + len, sizeof(buf) - len, "%s%.0f %%", primero ? "" : "  |  ", n->hum);
-        primero = false;
-    }
-    if (!isnan(n->co2)) {
-        len += snprintf(buf + len, sizeof(buf) - len, "%s%.0f ppm", primero ? "" : "  |  ", n->co2);
-        primero = false;
-    }
-    if (!isnan(n->luz_ventana)) {
-        len += snprintf(buf + len, sizeof(buf) - len, "%sVent: %.0f lx", primero ? "" : "  |  ", n->luz_ventana);
-        primero = false;
-    }
-    if (!isnan(n->luz_aula)) {
-        len += snprintf(buf + len, sizeof(buf) - len, "%sAula: %.0f lx", primero ? "" : "  |  ", n->luz_aula);
-        primero = false;
-    }
-    if (n->presencia >= 0) {
-        len += snprintf(buf + len, sizeof(buf) - len, "%sPres: %s", primero ? "" : "  |  ", n->presencia ? "SI" : "NO");
-        primero = false;
-    }
-    if (n->tiene_actuador) {
-        len += snprintf(buf + len, sizeof(buf) - len, "%s%s: %s",
-                        primero ? "" : "  |  ",
-                        n->actuador_key[0] ? n->actuador_key : "act",
-                        n->actuador_estado ? "ENCENDIDO" : "APAGADO");
-    }
-
-    strlcpy(n->ticker_line, buf, sizeof(n->ticker_line));
-    strlcpy(s_estado.ultimo_ticker, buf, sizeof(s_estado.ultimo_ticker));
-}
-
 esp_err_t ui_bridge_init(void)
 {
     if (s_lock == NULL) {
@@ -113,7 +68,6 @@ esp_err_t ui_bridge_init(void)
 
     if (xSemaphoreTake(s_lock, portMAX_DELAY) == pdTRUE) {
         memset(&s_estado, 0, sizeof(s_estado));
-        strlcpy(s_estado.ultimo_ticker, "Sin lecturas en malla", sizeof(s_estado.ultimo_ticker));
         xSemaphoreGive(s_lock);
     }
 
@@ -268,7 +222,6 @@ void ui_bridge_on_mesh_telemetria(const uint8_t mac[6], uint32_t ts, const char 
             }
         }
 
-        formatear_ticker_nodo(n);
         cJSON_Delete(root);
     }
 
@@ -291,7 +244,6 @@ void ui_bridge_on_control_resultado(const mesh_control_resultado_t *res)
     if (n && res->aplicado) {
         n->tiene_actuador = true;
         n->actuador_estado = !n->actuador_estado;
-        formatear_ticker_nodo(n);
     }
     ui_bridge_unlock();
 
