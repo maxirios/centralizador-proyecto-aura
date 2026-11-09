@@ -28,7 +28,8 @@ esp_err_t ui_port_init(void)
         return ESP_ERR_INVALID_STATE;
     }
 
-    const lvgl_port_cfg_t lvgl_cfg = ESP_LVGL_PORT_INIT_CONFIG();
+    lvgl_port_cfg_t lvgl_cfg = ESP_LVGL_PORT_INIT_CONFIG();
+    lvgl_cfg.task_stack = 12288;
     esp_err_t err = lvgl_port_init(&lvgl_cfg);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Error inicializando lvgl_port: %s", esp_err_to_name(err));

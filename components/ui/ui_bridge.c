@@ -13,14 +13,17 @@ static SemaphoreHandle_t s_lock = NULL;
 static ui_notif_cb_t s_notif_cb = NULL;
 static void *s_user_data = NULL;
 
-static const char *const CLAVES_TEMP[] = { "temp_c", "temp", "temperatura" };
-static const char *const CLAVES_HUM[]  = { "hum_pct", "hum", "humedad" };
-static const char *const CLAVES_CO2[]  = { "co2_ppm", "co2" };
+static const char *const CLAVES_TEMP[]        = { "temp_c", "temp", "temperatura" };
+static const char *const CLAVES_HUM[]         = { "humedad_pct", "hum_pct", "hum", "humedad" };
+static const char *const CLAVES_CO2[]         = { "co2_ppm", "co2" };
+static const char *const CLAVES_LUZ_VENTANA[] = { "luz_ventana_lx", "luz_lx", "iluminancia" };
+static const char *const CLAVES_LUZ_AULA[]    = { "luz_aula_lx", "luz_int_lx" };
+static const char *const CLAVES_ACTUADOR[]    = { "rele_canal1", "led", "rele", "actuador" };
 
-static bool leer_medida(const cJSON *root, const char *const *claves, size_t cant, float *out)
+static bool leer_medida(const cJSON *obj, const char *const *claves, size_t cant, float *out)
 {
     for (size_t i = 0; i < cant; i++) {
-        const cJSON *it = cJSON_GetObjectItemCaseSensitive(root, claves[i]);
+        const cJSON *it = cJSON_GetObjectItemCaseSensitive(obj, claves[i]);
         if (cJSON_IsNumber(it)) {
             *out = (float)it->valuedouble;
             return true;
@@ -44,6 +47,9 @@ static ui_nodo_t *buscar_o_crear_nodo(const uint8_t mac[6])
     n->temp = NAN;
     n->hum = NAN;
     n->co2 = NAN;
+    n->luz_ventana = NAN;
+    n->luz_aula = NAN;
+    n->presencia = -1;
     memcpy(n->mac, mac, 6);
     aura_hw_id_de_mac(mac, n->hw_id);
     n->conectado = true;
@@ -132,7 +138,18 @@ void ui_bridge_on_mesh_evento_hoja(const uint8_t mac[6], bool ausente, const cha
         return;
     }
 
-    ui_nodo_t *n = buscar_o_crear_nodo(mac);
+    ui_nodo_t *n = NULL;
+    if (ausente) {
+        for (int i = 0; i < s_estado.cant_nodos; i++) {
+            if (memcmp(s_estado.nodos[i].mac, mac, 6) == 0) {
+                n = &s_estado.nodos[i];
+                break;
+            }
+        }
+    } else {
+        n = buscar_o_crear_nodo(mac);
+    }
+
     ui_nodo_t snap;
     if (n) {
         n->conectado = !ausente;
@@ -165,21 +182,46 @@ void ui_bridge_on_mesh_telemetria(const uint8_t mac[6], uint32_t ts, const char 
 
     cJSON *root = cJSON_Parse(values_json);
     if (root) {
-        leer_medida(root, CLAVES_TEMP, sizeof(CLAVES_TEMP) / sizeof(CLAVES_TEMP[0]), &n->temp);
-        leer_medida(root, CLAVES_HUM, sizeof(CLAVES_HUM) / sizeof(CLAVES_HUM[0]), &n->hum);
-        leer_medida(root, CLAVES_CO2, sizeof(CLAVES_CO2) / sizeof(CLAVES_CO2[0]), &n->co2);
+        // Extraer procedencia si viene en el sobre JSON
+        const cJSON *j_adap = cJSON_GetObjectItemCaseSensitive(root, "adaptador");
+        if (!j_adap) j_adap = cJSON_GetObjectItemCaseSensitive(root, "node_id");
+        if (cJSON_IsString(j_adap) && j_adap->valuestring) {
+            strlcpy(n->adaptador, j_adap->valuestring, sizeof(n->adaptador));
+        }
 
-        cJSON *it = cJSON_GetObjectItemCaseSensitive(root, "led");
-        if (!it) it = cJSON_GetObjectItemCaseSensitive(root, "rele");
-        if (!it) it = cJSON_GetObjectItemCaseSensitive(root, "actuador");
-        if (it) {
-            n->tiene_actuador = true;
-            if (cJSON_IsBool(it)) {
-                n->actuador_estado = cJSON_IsTrue(it);
-            } else if (cJSON_IsNumber(it)) {
-                n->actuador_estado = (it->valueint != 0);
+        // Soportar tanto sobre con subobjeto "values" como JSON plano directo
+        const cJSON *vals = cJSON_GetObjectItemCaseSensitive(root, "values");
+        if (!cJSON_IsObject(vals)) {
+            vals = root;
+        }
+
+        leer_medida(vals, CLAVES_TEMP, sizeof(CLAVES_TEMP) / sizeof(CLAVES_TEMP[0]), &n->temp);
+        leer_medida(vals, CLAVES_HUM, sizeof(CLAVES_HUM) / sizeof(CLAVES_HUM[0]), &n->hum);
+        leer_medida(vals, CLAVES_CO2, sizeof(CLAVES_CO2) / sizeof(CLAVES_CO2[0]), &n->co2);
+        leer_medida(vals, CLAVES_LUZ_VENTANA, sizeof(CLAVES_LUZ_VENTANA) / sizeof(CLAVES_LUZ_VENTANA[0]), &n->luz_ventana);
+        leer_medida(vals, CLAVES_LUZ_AULA, sizeof(CLAVES_LUZ_AULA) / sizeof(CLAVES_LUZ_AULA[0]), &n->luz_aula);
+
+        const cJSON *j_pres = cJSON_GetObjectItemCaseSensitive(vals, "presencia");
+        if (cJSON_IsBool(j_pres)) {
+            n->presencia = cJSON_IsTrue(j_pres) ? 1 : 0;
+        } else if (cJSON_IsNumber(j_pres)) {
+            n->presencia = (j_pres->valueint != 0) ? 1 : 0;
+        }
+
+        for (size_t i = 0; i < sizeof(CLAVES_ACTUADOR) / sizeof(CLAVES_ACTUADOR[0]); i++) {
+            const cJSON *it = cJSON_GetObjectItemCaseSensitive(vals, CLAVES_ACTUADOR[i]);
+            if (it) {
+                n->tiene_actuador = true;
+                strlcpy(n->actuador_key, CLAVES_ACTUADOR[i], sizeof(n->actuador_key));
+                if (cJSON_IsBool(it)) {
+                    n->actuador_estado = cJSON_IsTrue(it);
+                } else if (cJSON_IsNumber(it)) {
+                    n->actuador_estado = (it->valueint != 0);
+                }
+                break;
             }
         }
+
         cJSON_Delete(root);
     }
 
@@ -201,6 +243,7 @@ void ui_bridge_on_control_resultado(const mesh_control_resultado_t *res)
     ui_nodo_t *n = buscar_o_crear_nodo(res->de_mac);
     if (n && res->aplicado) {
         n->tiene_actuador = true;
+        n->actuador_estado = !n->actuador_estado;
     }
     ui_bridge_unlock();
 

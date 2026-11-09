@@ -13,3 +13,104 @@ menu "Wi-Fi Configuration"
             Contrasena del router Wi-Fi.
 
 endmenu
+
+menu "AURA Centralizador - Interruptores / Reles Locales"
+
+    config AURA_LOCAL_RELAYS_COUNT
+        int "Cantidad de reles locales en el centralizador"
+        range 1 8
+        default 5
+        help
+            Cantidad de interruptores/reles locales mostrados en el Dashboard (1 a 8).
+            Hasta 5 se ubican en una hilera superior; si hay mas, pasan a una segunda fila centrada.
+
+    config AURA_RELAY_1_GPIO
+        int "Rele 1 - GPIO (-1 para deshabilitar pin fisico)"
+        default 6
+        help
+            Pin GPIO del ESP32-S3 para accionar el Rele 1. Usar -1 si aun no esta cableado.
+
+    config AURA_RELAY_1_LABEL
+        string "Rele 1 - Etiqueta opcional"
+        default ""
+        help
+            Etiqueta descriptiva opcional (ej. Pizarra, Fila 1). Si se deja vacia, solo se muestra el numero 1.
+
+    config AURA_RELAY_2_GPIO
+        int "Rele 2 - GPIO (-1 para deshabilitar pin fisico)"
+        default 15
+        depends on AURA_LOCAL_RELAYS_COUNT >= 2
+
+    config AURA_RELAY_2_LABEL
+        string "Rele 2 - Etiqueta opcional"
+        default ""
+        depends on AURA_LOCAL_RELAYS_COUNT >= 2
+
+    config AURA_RELAY_3_GPIO
+        int "Rele 3 - GPIO (-1 para deshabilitar pin fisico)"
+        default 16
+        depends on AURA_LOCAL_RELAYS_COUNT >= 3
+
+    config AURA_RELAY_3_LABEL
+        string "Rele 3 - Etiqueta opcional"
+        default ""
+        depends on AURA_LOCAL_RELAYS_COUNT >= 3
+
+    config AURA_RELAY_4_GPIO
+        int "Rele 4 - GPIO (-1 para deshabilitar pin fisico)"
+        default 11
+        depends on AURA_LOCAL_RELAYS_COUNT >= 4
+
+    config AURA_RELAY_4_LABEL
+        string "Rele 4 - Etiqueta opcional"
+        default ""
+        depends on AURA_LOCAL_RELAYS_COUNT >= 4
+
+    config AURA_RELAY_5_GPIO
+        int "Rele 5 - GPIO (-1 para deshabilitar pin fisico)"
+        default 12
+        depends on AURA_LOCAL_RELAYS_COUNT >= 5
+
+    config AURA_RELAY_5_LABEL
+        string "Rele 5 - Etiqueta opcional"
+        default ""
+        depends on AURA_LOCAL_RELAYS_COUNT >= 5
+
+    config AURA_RELAY_6_GPIO
+        int "Rele 6 - GPIO (-1 para deshabilitar pin fisico)"
+        default -1
+        depends on AURA_LOCAL_RELAYS_COUNT >= 6
+
+    config AURA_RELAY_6_LABEL
+        string "Rele 6 - Etiqueta opcional"
+        default ""
+        depends on AURA_LOCAL_RELAYS_COUNT >= 6
+
+    config AURA_RELAY_7_GPIO
+        int "Rele 7 - GPIO (-1 para deshabilitar pin fisico)"
+        default -1
+        depends on AURA_LOCAL_RELAYS_COUNT >= 7
+
+    config AURA_RELAY_7_LABEL
+        string "Rele 7 - Etiqueta opcional"
+        default ""
+        depends on AURA_LOCAL_RELAYS_COUNT >= 7
+
+    config AURA_RELAY_8_GPIO
+        int "Rele 8 - GPIO (-1 para deshabilitar pin fisico)"
+        default -1
+        depends on AURA_LOCAL_RELAYS_COUNT >= 8
+
+    config AURA_RELAY_8_LABEL
+        string "Rele 8 - Etiqueta opcional"
+        default ""
+        depends on AURA_LOCAL_RELAYS_COUNT >= 8
+
+    config AURA_ENABLE_DEMO_NODES
+        bool "Inyectar nodos de demostracion (sin hardware hoja)"
+        default n
+        help
+            Si se habilita, crea una tarea que simula telemetria local.
+            Mantener deshabilitado para operar exclusivamente con nodos reales en la red ESP-MESH.
+
+endmenu
