@@ -72,6 +72,42 @@ static bool enviar_trama_mesh_cb(const uint8_t *mac, const uint8_t *data, size_t
     return (err == ESP_OK);
 }
 
+static void enviar_reporte(void)
+{
+    static uint16_t seq_reporte = 0;
+
+    cJSON *d = cJSON_CreateObject();
+    cJSON *cfg = cJSON_AddObjectToObject(d, "config");
+    const char *aula = mesh_net_get_aula();
+    if (aula && aula[0]) {
+        cJSON_AddStringToObject(cfg, "aula", aula);
+    } else {
+        cJSON_AddNullToObject(cfg, "aula");
+    }
+    cJSON_AddStringToObject(d, "rol", "concentrador");
+    cJSON_AddNumberToObject(d, "capa", esp_mesh_get_layer());
+    cJSON_AddStringToObject(d, "alimentacion", "red");
+
+    char *txt = cJSON_PrintUnformatted(d);
+    if (txt) {
+        aura_trama_t t;
+        aura_trama_init(&t, AURA_TIPO_REPORTE, seq_reporte++, txt, strlen(txt));
+        enviar_trama_mesh_cb(NULL, (const uint8_t *)&t, aura_trama_bytes(&t));
+        cJSON_free(txt);
+    }
+    cJSON_Delete(d);
+}
+
+static void tarea_reporte(void *arg)
+{
+    vTaskDelay(pdMS_TO_TICKS(5000));
+    while (true) {
+        if (!mesh_isla_esta_activa() && esp_mesh_get_layer() >= 2) {
+            enviar_reporte();
+        }
+        vTaskDelay(pdMS_TO_TICKS(60000));
+    }
+}
 
 static void on_control_resultado(const mesh_control_resultado_t *res)
 {
@@ -895,6 +931,8 @@ void app_main(void)
     ESP_ERROR_CHECK(mesh_control_init(on_control_resultado));
     ESP_ERROR_CHECK(mesh_lote_init(enviar_a_raiz_cb));
     ESP_ERROR_CHECK(mesh_hora_init(enviar_trama_mesh_cb));
+
+    xTaskCreate(tarea_reporte, "reporte", 4096, NULL, 3, NULL);
 
     esp_err_t err_touch = bsp_touch_init();
     if (err_touch == ESP_OK) {
