@@ -26,6 +26,7 @@
 #include "styles.h"
 #include "relay_ctrl.h"
 #include "driver/gpio.h"
+#include "esp_random.h"
 
 #define PIN_BOTON GPIO_NUM_0
 
@@ -74,7 +75,12 @@ static bool enviar_trama_mesh_cb(const uint8_t *mac, const uint8_t *data, size_t
 
 static void enviar_reporte(void)
 {
-    static uint16_t seq_reporte = 0;
+    static uint16_t seq_reporte;
+    static bool seq_listo = false;
+    if (!seq_listo) {
+        seq_reporte = (uint16_t)esp_random();
+        seq_listo = true;
+    }
 
     cJSON *d = cJSON_CreateObject();
     cJSON *cfg = cJSON_AddObjectToObject(d, "config");
