@@ -29,6 +29,8 @@
 
 #define PIN_BOTON GPIO_NUM_0
 
+static const uint8_t MESH_ID_AURA[6] = {0x6D, 0x65, 0x73, 0x68, 0x30, 0x31};
+
 static const char *TAG = "mesh";
 static esp_netif_t *netif_sta;
 
@@ -69,6 +71,7 @@ static bool enviar_trama_mesh_cb(const uint8_t *mac, const uint8_t *data, size_t
     }
     return (err == ESP_OK);
 }
+
 
 static void on_control_resultado(const mesh_control_resultado_t *res)
 {
@@ -755,7 +758,7 @@ static void refresco_eez_ui_timer_cb(lv_timer_t *t)
     }
     if (objects.cfg_val_chan) {
         char ch_buf[48];
-        snprintf(ch_buf, sizeof(ch_buf), "Canal %u - Mesh ID MESH01", (unsigned)snap.red.canal);
+        snprintf(ch_buf, sizeof(ch_buf), "Canal %u - Mesh ID AURA", (unsigned)snap.red.canal);
         lv_label_set_text(objects.cfg_val_chan, ch_buf);
     }
     if (objects.cfg_gw_badge && objects.cfg_gw_badge_lbl) {
@@ -800,7 +803,9 @@ static void tarea_boton_local(void *arg)
 
 static void on_mesh_event(void *arg, esp_event_base_t base, int32_t id, void *data)
 {
+    esp_wifi_disable_pmf_config(WIFI_IF_AP);
     if (id == MESH_EVENT_STARTED) {
+        esp_wifi_disable_pmf_config(WIFI_IF_AP);
         if (mesh_isla_esta_activa()) {
             esp_mesh_set_self_organized(false, false);
         }
@@ -848,7 +853,7 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_wifi_init(&wifi_cfg));
     ESP_ERROR_CHECK(esp_wifi_start());
 
-    ESP_ERROR_CHECK(mesh_isla_init((const uint8_t *)"MESH01"));
+    ESP_ERROR_CHECK(mesh_isla_init(MESH_ID_AURA));
 
     ESP_ERROR_CHECK(esp_mesh_init());
     ESP_ERROR_CHECK(esp_event_handler_register(MESH_EVENT, ESP_EVENT_ANY_ID,
@@ -856,10 +861,10 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_mesh_fix_root(true));
     ESP_ERROR_CHECK(esp_mesh_set_max_layer(6));
     ESP_ERROR_CHECK(esp_mesh_disable_ps());
-    ESP_ERROR_CHECK(esp_mesh_set_ap_authmode(WIFI_AUTH_OPEN));
+    ESP_ERROR_CHECK(esp_mesh_set_ap_authmode(WIFI_AUTH_WPA2_PSK));
 
     mesh_cfg_t cfg = MESH_INIT_CONFIG_DEFAULT();
-    memcpy(cfg.mesh_id.addr, "MESH01", 6);
+    memcpy(cfg.mesh_id.addr, MESH_ID_AURA, 6);
     const char *router = mesh_isla_esta_activa() ? MESH_ROUTER_ISLA : "NO_EXISTE_ESTE_ROUTER";
     cfg.router.ssid_len = strlen(router);
     memcpy(cfg.router.ssid, router, cfg.router.ssid_len);
@@ -867,7 +872,7 @@ void app_main(void)
     cfg.allow_channel_switch = !mesh_isla_esta_activa();
     cfg.mesh_ap.max_connection = 4;
     cfg.mesh_ap.nonmesh_max_connection = 0;
-    cfg.mesh_ap.password[0] = '\0';
+    memcpy(cfg.mesh_ap.password, "clave-de-prueba", strlen("clave-de-prueba"));
 
     if (mesh_isla_esta_activa()) {
         ESP_ERROR_CHECK(esp_mesh_set_type(MESH_ROOT));
