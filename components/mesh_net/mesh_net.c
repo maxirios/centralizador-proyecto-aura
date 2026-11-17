@@ -11,7 +11,7 @@
 
 static const char *TAG = "mesh_net";
 static const char *NVS_NAMESPACE = "concentrador";
-static const char *NVS_KEY_AULA = "aula";
+static const char *NVS_KEY_AULA = "aula_gw";
 
 static char s_aula[AURA_AULA_MAX] = {0};
 static uint8_t s_mi_mac[6] = {0};
@@ -39,17 +39,15 @@ esp_err_t mesh_net_init(void)
         size_t len = sizeof(s_aula);
         err = nvs_get_str(h, NVS_KEY_AULA, s_aula, &len);
         if (err != ESP_OK || s_aula[0] == '\0' || !aura_aula_valida(s_aula)) {
-            ESP_LOGW(TAG, "Aula no persistida o invalida en NVS. Usando por defecto: '%s'", CONFIG_AURA_AULA_DEFAULT);
-            strlcpy(s_aula, CONFIG_AURA_AULA_DEFAULT, sizeof(s_aula));
-            nvs_set_str(h, NVS_KEY_AULA, s_aula);
-            nvs_commit(h);
+            s_aula[0] = '\0';
+            ESP_LOGW(TAG, "Sin aula en NVS (la asigna el Gateway con set_config {\"aula\":...})");
         } else {
             ESP_LOGI(TAG, "Aula recuperada de NVS: '%s'", s_aula);
         }
         nvs_close(h);
     } else {
-        ESP_LOGW(TAG, "No se pudo abrir NVS (%s). Usando aula por defecto: '%s'", esp_err_to_name(err), CONFIG_AURA_AULA_DEFAULT);
-        strlcpy(s_aula, CONFIG_AURA_AULA_DEFAULT, sizeof(s_aula));
+        s_aula[0] = '\0';
+        ESP_LOGW(TAG, "No se pudo abrir NVS (%s). Aula sin asignar", esp_err_to_name(err));
     }
 
     s_inicializado = true;
@@ -70,7 +68,8 @@ esp_err_t mesh_net_anunciar_aula(void)
     esp_wifi_set_vendor_ie(false, WIFI_VND_IE_TYPE_BEACON, WIFI_VND_IE_ID_1, NULL);
     esp_wifi_set_vendor_ie(false, WIFI_VND_IE_TYPE_PROBE_RESP, WIFI_VND_IE_ID_1, NULL);
 
-    if (s_aula[0] == '\0') {
+    const char *aula_ie = (s_aula[0] != '\0') ? s_aula : CONFIG_AURA_AULA_DEFAULT;
+    if (aula_ie[0] == '\0') {
         ESP_LOGW(TAG, "Sin aula configurada: no se anuncian beacons Vendor IE");
         return ESP_OK;
     }
@@ -78,7 +77,7 @@ esp_err_t mesh_net_anunciar_aula(void)
     uint8_t ie_buf[sizeof(vendor_ie_data_t) + 6 + AURA_AULA_MAX];
     vendor_ie_data_t *v = (vendor_ie_data_t *)ie_buf;
 
-    size_t aula_len = strlen(s_aula);
+    size_t aula_len = strlen(aula_ie);
     v->element_id = WIFI_VENDOR_IE_ELEMENT_ID;
     v->length = 4 + 6 + aula_len;
     v->vendor_oui[0] = AURA_OUI_0;
@@ -87,13 +86,14 @@ esp_err_t mesh_net_anunciar_aula(void)
     v->vendor_oui_type = AURA_IE_CONCENTRADOR;
 
     memcpy(v->payload, s_mi_mac, 6);
-    memcpy(v->payload + 6, s_aula, aula_len);
+    memcpy(v->payload + 6, aula_ie, aula_len);
 
     esp_err_t e1 = esp_wifi_set_vendor_ie(true, WIFI_VND_IE_TYPE_BEACON, WIFI_VND_IE_ID_1, v);
     esp_err_t e2 = esp_wifi_set_vendor_ie(true, WIFI_VND_IE_TYPE_PROBE_RESP, WIFI_VND_IE_ID_1, v);
 
     if (e1 == ESP_OK && e2 == ESP_OK) {
-        ESP_LOGI(TAG, "Anunciando aula '%s' en beacons Wi-Fi (Vendor IE activo)", s_aula);
+        ESP_LOGI(TAG, "Anunciando beacon Vendor IE '%s' (aula UI: '%s')",
+                 aula_ie, s_aula[0] ? s_aula : "Sin asignar");
         return ESP_OK;
     } else {
         ESP_LOGW(TAG, "Fallo al inyectar Vendor IE: beacon=%s, probe_resp=%s",

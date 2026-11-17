@@ -40,7 +40,7 @@ Estos parámetros se configuran de forma segura mediante `main/config_local.h` o
 idf.py menuconfig
 ```
 
-Navega hasta **`AURA Mesh Intermediary Configuration --->`** para ajustar la clave de malla y el aula por defecto.
+Navega hasta `AURA Centralizador - Interruptores / Reles Locales --->` para configurar la cantidad de interruptores, los pines GPIO asociados y sus etiquetas descriptivas.
 
 ---
 

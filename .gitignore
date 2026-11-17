@@ -16,3 +16,9 @@ managed_components/
 # Editor and language server configuration
 .vscode/
 .clangd
+
+# EEZ Studio UI state, backups and generator scratch
+GUI/*.eez-project-ui-state
+GUI/*.eez-project.bak*
+GUI/tmp/
+tmp/
