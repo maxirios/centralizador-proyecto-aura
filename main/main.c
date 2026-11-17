@@ -33,7 +33,6 @@
 static const uint8_t MESH_ID_AURA[6] = {0x6D, 0x65, 0x73, 0x68, 0x30, 0x31};
 
 static const char *TAG = "mesh";
-static esp_netif_t *netif_sta;
 
 static bool enviar_a_raiz_cb(const uint8_t *data, size_t len)
 {
@@ -863,9 +862,7 @@ static void on_mesh_event(void *arg, esp_event_base_t base, int32_t id, void *da
         mesh_isla_notificar_padre_conectado(c->connected.channel);
         mesh_net_anunciar_aula();
         ui_bridge_actualizar_red(true, false, c->connected.channel, mesh_net_get_aula());
-        if (esp_mesh_is_root()) {
-            esp_netif_dhcpc_start(netif_sta);
-        } else {
+        if (!esp_mesh_is_root()) {
             mesh_hora_pedir_sincronizacion();
         }
     } else if (id == MESH_EVENT_PARENT_DISCONNECTED) {
@@ -889,7 +886,8 @@ void app_main(void)
              AURA_PROTO_VERSION, AURA_CABECERA_BYTES, AURA_PAYLOAD_MAX);
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
-    ESP_ERROR_CHECK(esp_netif_create_default_wifi_mesh_netifs(&netif_sta, NULL));
+    esp_netif_t *netif_sta = NULL, *netif_ap = NULL;
+    ESP_ERROR_CHECK(esp_netif_create_default_wifi_mesh_netifs(&netif_sta, &netif_ap));
 
     wifi_init_config_t wifi_cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&wifi_cfg));
@@ -907,7 +905,8 @@ void app_main(void)
 
     mesh_cfg_t cfg = MESH_INIT_CONFIG_DEFAULT();
     memcpy(cfg.mesh_id.addr, MESH_ID_AURA, 6);
-    const char *router = mesh_isla_esta_activa() ? MESH_ROUTER_ISLA : "NO_EXISTE_ESTE_ROUTER";
+    /* La API de ESP-MESH exige un SSID de router aunque el concentrador no se conecte a un router */
+    const char *router = mesh_isla_esta_activa() ? MESH_ROUTER_ISLA : "aura-sin-router";
     cfg.router.ssid_len = strlen(router);
     memcpy(cfg.router.ssid, router, cfg.router.ssid_len);
     cfg.channel = mesh_isla_esta_activa() ? mesh_isla_get_canal() : 0;
