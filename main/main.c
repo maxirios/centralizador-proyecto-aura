@@ -995,6 +995,56 @@ static void on_mesh_event(void *arg, esp_event_base_t base, int32_t id,
   }
 }
 
+/**
+ * Procesa comandos remotos (ej. set_config) dirigidos al centralizador,
+ * actualiza la UI y responde a la raíz con AURA_TIPO_RESULTADO.
+ */
+static void procesar_comando_concentrador(const uint8_t de_mac[6],
+                                          const aura_trama_t *t) {
+  static bool hay_ultimo = false;
+  static uint16_t ultimo_seq = 0;
+  static uint8_t ultimo_de[6] = {0};
+
+  if (hay_ultimo && ultimo_seq == t->seq &&
+      memcmp(ultimo_de, de_mac, 6) == 0) {
+    return;
+  }
+  hay_ultimo = true;
+  ultimo_seq = t->seq;
+  memcpy(ultimo_de, de_mac, 6);
+
+  char cmd_json[AURA_PAYLOAD_MAX + 1] = {0};
+  char resp_json[AURA_PAYLOAD_MAX + 1] = {0};
+  aura_payload_texto(t, cmd_json, sizeof(cmd_json));
+  ESP_LOGI(TAG, "Comando recibido para centralizador de " MACSTR ": %s",
+           MAC2STR(de_mac), cmd_json);
+
+  if (mesh_net_procesar_comando_config(cmd_json, resp_json,
+                                       sizeof(resp_json)) == ESP_OK &&
+      resp_json[0] != '\0') {
+    ui_bridge_actualizar_red(!mesh_isla_esta_activa(), mesh_isla_esta_activa(),
+                             mesh_isla_get_canal(), mesh_net_get_aula());
+    s_eez_ui_sucio = true;
+
+    static uint16_t s_seq_cmd = 0;
+    static bool s_seq_listo = false;
+    if (!s_seq_listo) {
+      s_seq_cmd = (uint16_t)esp_random();
+      s_seq_listo = true;
+    }
+
+    aura_trama_t res_trama;
+    aura_trama_init(&res_trama, AURA_TIPO_RESULTADO, s_seq_cmd++, resp_json,
+                    strlen(resp_json));
+    enviar_trama_mesh_cb(NULL, (const uint8_t *)&res_trama,
+                         aura_trama_bytes(&res_trama));
+
+    if (!mesh_isla_esta_activa() && esp_mesh_get_layer() >= 2) {
+      enviar_reporte();
+    }
+  }
+}
+
 void app_main(void) {
   ESP_ERROR_CHECK(nvs_flash_init());
   ESP_LOGI(TAG, "Protocolo AURA v%d cargado (cabecera %d B, payload max %d B)",
@@ -1108,6 +1158,11 @@ void app_main(void) {
 
         if (t->tipo == AURA_TIPO_HORA &&
             mesh_hora_procesar_trama(from.addr, t)) {
+          continue;
+        }
+
+        if (t->tipo == AURA_TIPO_COMANDO) {
+          procesar_comando_concentrador(from.addr, t);
           continue;
         }
 
