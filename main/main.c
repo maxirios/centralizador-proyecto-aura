@@ -103,13 +103,15 @@ static void enviar_reporte(void) {
   cJSON_Delete(d);
 }
 
+static TaskHandle_t s_tarea_reporte_handle = NULL;
+
 static void tarea_reporte(void *arg) {
   vTaskDelay(pdMS_TO_TICKS(5000));
   while (true) {
     if (!mesh_isla_esta_activa() && esp_mesh_get_layer() >= 2) {
       enviar_reporte();
     }
-    vTaskDelay(pdMS_TO_TICKS(60000));
+    ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(60000));
   }
 }
 
@@ -1159,7 +1161,7 @@ void app_main(void) {
   ESP_ERROR_CHECK(mesh_lote_init(enviar_a_raiz_cb));
   ESP_ERROR_CHECK(mesh_hora_init(enviar_trama_mesh_cb));
 
-  xTaskCreate(tarea_reporte, "reporte", 4096, NULL, 3, NULL);
+  xTaskCreate(tarea_reporte, "reporte", 4096, NULL, 3, &s_tarea_reporte_handle);
 
   esp_err_t err_touch = bsp_touch_init();
   if (err_touch == ESP_OK) {
@@ -1214,6 +1216,17 @@ void app_main(void) {
 
         if (t->tipo == AURA_TIPO_COMANDO) {
           procesar_comando_concentrador(from.addr, t);
+          continue;
+        }
+
+        if (t->tipo == AURA_TIPO_REPORTAR) {
+          ESP_LOGI(TAG,
+                   "Solicitud AURA_TIPO_REPORTAR de " MACSTR
+                   ", enviando reporte inmediato",
+                   MAC2STR(from.addr));
+          if (s_tarea_reporte_handle != NULL) {
+            xTaskNotifyGive(s_tarea_reporte_handle);
+          }
           continue;
         }
 
