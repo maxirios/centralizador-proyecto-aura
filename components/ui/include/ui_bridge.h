@@ -17,13 +17,18 @@ extern "C" {
 typedef struct {
     uint8_t mac[6];
     char hw_id[AURA_HW_ID_BYTES];
+    char adaptador[32];     // Procedencia opcional (ej. "mac-e072a1d848b0" o "node_id")
     bool conectado;
     bool tiene_telemetria;
     uint32_t ts_ultimo;
-    float temp;     // NAN si el nodo no reporta la medida
-    float hum;      // NAN si el nodo no reporta la medida
-    float co2;      // NAN si el nodo no reporta la medida
+    float temp;             // NAN si el nodo no reporta la medida
+    float hum;              // NAN si el nodo no reporta la medida
+    float co2;              // NAN si el nodo no reporta la medida
+    float luz_ventana;      // NAN si el nodo no reporta luz_ventana_lx
+    float luz_aula;         // NAN si el nodo no reporta luz_aula_lx
+    int8_t presencia;       // -1 si no reporta, 0 = libre, 1 = detectado
     bool tiene_actuador;
+    char actuador_key[24];  // Clave del actuador ("rele_canal1", "led", "rele")
     bool actuador_estado;
     char raw_values[AURA_VALUES_MAX + 1];
 } ui_nodo_t;

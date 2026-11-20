@@ -2,7 +2,7 @@
 
 Este directorio contiene la definición visual de la interfaz gráfica del **Centralizador AURA** diseñada para **EEZ Studio** sobre **LVGL v9** en orientación vertical (**480 × 800 px**, RGB565).
 
-- **Archivo fuente de verdad:** `GUI/aura.eez-project`
+- **Archivo fuente:** `GUI/aura.eez-project`
 - **Directorio de exportación C/H:** `../main/ui/` (configurado en `settings.build.destinationFolder` como `..\main\ui`).
 
 > **Importante:** Nunca edites manualmente los archivos generados en `main/ui/` (`screens.c`, `screens.h`, `styles.c`, `images.c`, `ui.c`, `vars.h`, `actions.h`), ya que EEZ Studio los sobrescribe en cada exportación.
@@ -43,16 +43,26 @@ El proyecto define 21 tokens semánticos de color con soporte completo para dos 
 
 1. **Abrir en EEZ Studio:**
    ```bash
-   ~/.local/bin/EEZ-Studio-0.29.0.AppImage GUI/aura.eez-project
+   eez-studio GUI/aura.eez-project
    ```
+   > [!NOTE]
+   > Asegúrate de tener instalado EEZ Studio. Si el comando `eez-studio` no está en tu `PATH`, reemplázalo por la ruta a su ejecutable (`<RUTA_EJECUTABLE> GUI/aura.eez-project`) o crea un enlace simbólico en el sistema:
+   >
+   > ```bash
+   > sudo ln -s "<RUTA_EJECUTABLE>" /usr/local/bin/eez-studio
+   > ```
 2. **Validar en el Canvas y alternar temas:**
    - Revisa las 4 páginas (`dashboard`, `devices`, `config`, `about`) y los 2 UserWidgets (`HeaderBar`, `BottomNav`).
    - En el panel **Themes**, alterna entre `Default` y `Dark` para inspeccionar el contraste en ambos modos.
-3. **Exportar código C (`Build` / `F7` o `Ctrl+B`):**
-   - Presiona `F7` o el botón **Build** en la barra superior de EEZ Studio.
+3. **Exportar código C (`Build` / `F7` o CLI):**
+   - En la interfaz gráfica: pulsa `F7` o el botón **Build** en la barra superior.
+   - O por terminal (modo headless):
+     ```bash
+     eez-studio --no-sandbox --build-project GUI/aura.eez-project
+     ```
    - Los archivos C/H se generarán automáticamente en `../main/ui/`.
-4. **Verificación automática (Compuertas del Skill `eezstudio`):**
-   Desde la raíz del repositorio:
+4. **Verificación automática (Compuertas del Skill `eezstudio`):**  
+Desde la raíz del repositorio:
    ```bash
    python3 .agents/skills/eezstudio/verify_project.py GUI/aura.eez-project
    python3 .agents/skills/eezstudio/render_pages.py GUI/aura.eez-project
