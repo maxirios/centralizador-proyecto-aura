@@ -1301,7 +1301,7 @@ void create_screen_devices() {
             lv_obj_set_size(obj, 300, 16);
             lv_obj_remove_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_GESTURE_BUBBLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
             add_style_label_section_title(obj);
-            lv_label_set_text_static(obj, "GATEWAY");
+            lv_label_set_text_static(obj, "NODO RAIZ");
         }
         {
             // dev_infra_card
@@ -1318,10 +1318,10 @@ void create_screen_devices() {
                     lv_obj_t *obj = lv_label_create(parent_obj);
                     objects.dev_gw_title = obj;
                     lv_obj_set_pos(obj, 14, 10);
-                    lv_obj_set_size(obj, 310, 18);
+                    lv_obj_set_size(obj, 310, 20);
                     lv_obj_remove_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_GESTURE_BUBBLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
                     add_style_label_card_title(obj);
-                    lv_label_set_text_static(obj, "Gateway AURA");
+                    lv_label_set_text_static(obj, "--");
                 }
                 {
                     // dev_gw_mac
@@ -1331,7 +1331,7 @@ void create_screen_devices() {
                     lv_obj_set_size(obj, 310, 16);
                     lv_obj_remove_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_GESTURE_BUBBLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
                     add_style_label_muted(obj);
-                    lv_label_set_text_static(obj, "MAC: --");
+                    lv_label_set_text_static(obj, "Canal --");
                 }
                 {
                     // dev_gw_badge
@@ -1878,7 +1878,7 @@ void create_screen_config() {
                     // cfg_lbl_gw
                     lv_obj_t *obj = lv_label_create(parent_obj);
                     objects.cfg_lbl_gw = obj;
-                    lv_obj_set_pos(obj, 20, 280);
+                    lv_obj_set_pos(obj, 20, 368);
                     lv_obj_set_size(obj, 408, 16);
                     lv_obj_remove_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_GESTURE_BUBBLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
                     add_style_label_section_title(obj);
@@ -1888,7 +1888,7 @@ void create_screen_config() {
                     // cfg_box_gw
                     lv_obj_t *obj = lv_obj_create(parent_obj);
                     objects.cfg_box_gw = obj;
-                    lv_obj_set_pos(obj, 20, 304);
+                    lv_obj_set_pos(obj, 20, 392);
                     lv_obj_set_size(obj, 408, 64);
                     lv_obj_remove_flag(obj, LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
                     add_style_panel_input_box(obj);
@@ -1902,7 +1902,7 @@ void create_screen_config() {
                             lv_obj_set_size(obj, 260, 18);
                             lv_obj_remove_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_GESTURE_BUBBLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
                             add_style_label_body(obj);
-                            lv_label_set_text_static(obj, "Nodo Raiz Mesh");
+                            lv_label_set_text_static(obj, "Nodo Raiz");
                         }
                         {
                             // cfg_gw_mac
@@ -1912,7 +1912,7 @@ void create_screen_config() {
                             lv_obj_set_size(obj, 260, 16);
                             lv_obj_remove_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_GESTURE_BUBBLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
                             add_style_label_muted(obj);
-                            lv_label_set_text_static(obj, "Estado de enlace con raiz");
+                            lv_label_set_text_static(obj, "MAC: --");
                         }
                         {
                             // cfg_gw_badge
@@ -1942,17 +1942,17 @@ void create_screen_config() {
                     // cfg_lbl_mac
                     lv_obj_t *obj = lv_label_create(parent_obj);
                     objects.cfg_lbl_mac = obj;
-                    lv_obj_set_pos(obj, 20, 388);
+                    lv_obj_set_pos(obj, 20, 280);
                     lv_obj_set_size(obj, 408, 16);
                     lv_obj_remove_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_GESTURE_BUBBLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
                     add_style_label_section_title(obj);
-                    lv_label_set_text_static(obj, "DIRECCION MAC DEL CENTRALIZADOR");
+                    lv_label_set_text_static(obj, "MAC DE ESTE DISPOSITIVO");
                 }
                 {
                     // cfg_box_mac
                     lv_obj_t *obj = lv_obj_create(parent_obj);
                     objects.cfg_box_mac = obj;
-                    lv_obj_set_pos(obj, 20, 412);
+                    lv_obj_set_pos(obj, 20, 304);
                     lv_obj_set_size(obj, 408, 44);
                     lv_obj_remove_flag(obj, LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
                     add_style_panel_input_box(obj);
@@ -2250,6 +2250,9 @@ void create_user_widget_header_bar(lv_obj_t *parent_obj, int startWidgetIndex) {
                     lv_obj_set_size(obj, 48, 48);
                     lv_image_set_src(obj, &img_logo_header_48);
                     lv_obj_remove_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
+                    lv_obj_set_style_bg_color(obj, lv_color_hex(0x004069), LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_bg_opa(obj, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_radius(obj, 10, LV_PART_MAIN | LV_STATE_DEFAULT);
                 }
                 {
                     // header_title

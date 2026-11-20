@@ -613,6 +613,25 @@ static void refresco_eez_ui_timer_cb(lv_timer_t *t) {
   if (objects.about_header__header_mesh_lbl)
     lv_label_set_text(objects.about_header__header_mesh_lbl, mesh_txt);
 
+  lv_obj_t *mesh_dots[5] = {
+      objects.dashboard_act_header__header_mesh_dot,
+      objects.dashboard_sens_header__header_mesh_dot,
+      objects.devices_header__header_mesh_dot,
+      objects.config_header__header_mesh_dot,
+      objects.about_header__header_mesh_dot,
+  };
+  for (int i = 0; i < 5; i++) {
+    if (!mesh_dots[i])
+      continue;
+    if (snap.red.modo_isla) {
+      lv_obj_set_style_bg_color(mesh_dots[i], lv_color_hex(0xFE9304),
+                                LV_PART_MAIN | LV_STATE_DEFAULT);
+    } else {
+      lv_obj_remove_local_style_prop(mesh_dots[i], LV_STYLE_BG_COLOR,
+                                     LV_PART_MAIN | LV_STATE_DEFAULT);
+    }
+  }
+
   // Actualizar Ticker en ambas páginas del Tablero (4 chips intercalados +
   // barra de desplazamiento + topes)
   int total_items =
@@ -764,24 +783,28 @@ static void refresco_eez_ui_timer_cb(lv_timer_t *t) {
   }
 
   char strip_buf[32];
-  // Pantalla Dispositivos - Gateway
-  if (objects.dev_gw_mac && objects.dev_gw_badge && objects.dev_gw_badge_lbl) {
+  // Pantalla Dispositivos - Nodo Raiz
+  if (objects.dev_gw_title && objects.dev_gw_mac && objects.dev_gw_badge &&
+      objects.dev_gw_badge_lbl) {
     bool gw_ok = snap.red.gateway_conectado && !snap.red.modo_isla;
     const char *gw_txt =
         snap.red.modo_isla ? "MODO ISLA" : (gw_ok ? "CONECTADO" : "BUSCANDO");
     aplicar_badge_estado(objects.dev_gw_badge, objects.dev_gw_badge_lbl, gw_ok,
                          gw_txt);
-    char gw_info[64];
     if (snap.red.modo_isla) {
-      snprintf(gw_info, sizeof(gw_info), "Deshabilitado - Canal %u",
-               (unsigned)snap.red.canal);
+      lv_label_set_text(objects.dev_gw_title, "Deshabilitado");
     } else if (gw_ok && s_gw_mac_str[0] != '\0') {
-      snprintf(gw_info, sizeof(gw_info), "MAC: %s - Canal %u", s_gw_mac_str,
-               (unsigned)snap.red.canal);
+      lv_label_set_text(objects.dev_gw_title, s_gw_mac_str);
     } else {
-      strlcpy(gw_info, "Buscando nodo raiz...", sizeof(gw_info));
+      lv_label_set_text(objects.dev_gw_title, "Buscando nodo raiz...");
     }
-    lv_label_set_text(objects.dev_gw_mac, gw_info);
+    char ch_info[32];
+    if (snap.red.canal > 0) {
+      snprintf(ch_info, sizeof(ch_info), "Canal %u", (unsigned)snap.red.canal);
+    } else {
+      strlcpy(ch_info, "Canal --", sizeof(ch_info));
+    }
+    lv_label_set_text(objects.dev_gw_mac, ch_info);
   }
 
   // Pantalla Dispositivos - Nodos Hoja
@@ -957,6 +980,17 @@ static void refresco_eez_ui_timer_cb(lv_timer_t *t) {
         snap.red.modo_isla ? "MODO ISLA" : (gw_ok ? "CONECTADO" : "BUSCANDO");
     aplicar_badge_estado(objects.cfg_gw_badge, objects.cfg_gw_badge_lbl, gw_ok,
                          gw_txt);
+    if (objects.cfg_gw_mac) {
+      char cfg_mac[48];
+      if (snap.red.modo_isla) {
+        strlcpy(cfg_mac, "Deshabilitado", sizeof(cfg_mac));
+      } else if (gw_ok && s_gw_mac_str[0] != '\0') {
+        snprintf(cfg_mac, sizeof(cfg_mac), "MAC: %s", s_gw_mac_str);
+      } else {
+        strlcpy(cfg_mac, "MAC: --", sizeof(cfg_mac));
+      }
+      lv_label_set_text(objects.cfg_gw_mac, cfg_mac);
+    }
   }
 }
 

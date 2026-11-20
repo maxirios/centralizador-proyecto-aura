@@ -5692,7 +5692,7 @@
               },
               "group": "",
               "groupIndex": 0,
-              "text": "GATEWAY",
+              "text": "NODO RAIZ",
               "textType": "literal",
               "longMode": "WRAP",
               "recolor": false
@@ -5726,7 +5726,7 @@
                   "left": 14,
                   "top": 10,
                   "width": 310,
-                  "height": 18,
+                  "height": 20,
                   "customInputs": [],
                   "customOutputs": [],
                   "style": {
@@ -5761,7 +5761,7 @@
                   },
                   "group": "",
                   "groupIndex": 0,
-                  "text": "Gateway AURA",
+                  "text": "--",
                   "textType": "literal",
                   "longMode": "WRAP",
                   "recolor": false
@@ -5807,7 +5807,7 @@
                   },
                   "group": "",
                   "groupIndex": 0,
-                  "text": "MAC: --",
+                  "text": "Canal --",
                   "textType": "literal",
                   "longMode": "WRAP",
                   "recolor": false
@@ -7955,7 +7955,7 @@
                   "objID": "9ab5a44a-6aa0-c29d-1dff-db5200a659fb",
                   "type": "LVGLLabelWidget",
                   "left": 20,
-                  "top": 280,
+                  "top": 368,
                   "width": 408,
                   "height": 16,
                   "customInputs": [],
@@ -8001,7 +8001,7 @@
                   "objID": "0c0d6547-6b75-e907-1dd2-02373d828820",
                   "type": "LVGLPanelWidget",
                   "left": 20,
-                  "top": 304,
+                  "top": 392,
                   "width": 408,
                   "height": 64,
                   "customInputs": [],
@@ -8061,7 +8061,7 @@
                       },
                       "group": "",
                       "groupIndex": 0,
-                      "text": "Nodo Raiz Mesh",
+                      "text": "Nodo Raiz",
                       "textType": "literal",
                       "longMode": "WRAP",
                       "recolor": false
@@ -8107,7 +8107,7 @@
                       },
                       "group": "",
                       "groupIndex": 0,
-                      "text": "Estado de enlace con raiz",
+                      "text": "MAC: --",
                       "textType": "literal",
                       "longMode": "WRAP",
                       "recolor": false
@@ -8223,7 +8223,7 @@
                   "objID": "7c2d1d27-a3e6-4959-ae24-a8468a8f23ce",
                   "type": "LVGLLabelWidget",
                   "left": 20,
-                  "top": 388,
+                  "top": 280,
                   "width": 408,
                   "height": 16,
                   "customInputs": [],
@@ -8260,7 +8260,7 @@
                   },
                   "group": "",
                   "groupIndex": 0,
-                  "text": "DIRECCION MAC DEL CENTRALIZADOR",
+                  "text": "MAC DE ESTE DISPOSITIVO",
                   "textType": "literal",
                   "longMode": "WRAP",
                   "recolor": false
@@ -8269,7 +8269,7 @@
                   "objID": "1dee0b43-dcb0-427d-b703-84e55c0be853",
                   "type": "LVGLPanelWidget",
                   "left": 20,
-                  "top": 412,
+                  "top": 304,
                   "width": 408,
                   "height": 44,
                   "customInputs": [],
@@ -9435,7 +9435,16 @@
               "disabledStateType": "literal",
               "states": "",
               "localStyles": {
-                "objID": "52f8bcea-aa2b-f54f-2195-632370b47a55"
+                "objID": "52f8bcea-aa2b-f54f-2195-632370b47a55",
+                "definition": {
+                  "MAIN": {
+                    "DEFAULT": {
+                      "bg_color": "AuraBlue",
+                      "bg_opa": 255,
+                      "radius": 10
+                    }
+                  }
+                }
               },
               "group": "",
               "groupIndex": 0,
