@@ -595,7 +595,7 @@ static void refresco_eez_ui_timer_cb(lv_timer_t *t) {
 
   char mesh_txt[32];
   if (snap.red.modo_isla) {
-    snprintf(mesh_txt, sizeof(mesh_txt), "Isla (%u)", (unsigned)online_cnt);
+    strlcpy(mesh_txt, "Modo Isla", sizeof(mesh_txt));
   } else {
     snprintf(mesh_txt, sizeof(mesh_txt), "Mesh (%u)", (unsigned)online_cnt);
   }

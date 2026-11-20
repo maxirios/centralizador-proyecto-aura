@@ -68,9 +68,26 @@ static esp_err_t conmutar_malla(bool activar_isla)
 
     err = esp_mesh_stop();
     if (err != ESP_OK && err != ESP_ERR_MESH_NOT_START) {
-        ESP_LOGE(TAG, "Error deteniendo malla: %s", esp_err_to_name(err));
+        ESP_LOGE(TAG, "Error en esp_mesh_stop: %s", esp_err_to_name(err));
         return err;
     }
+
+    err = esp_mesh_deinit();
+    if (err != ESP_OK && err != ESP_ERR_MESH_NOT_INIT) {
+        ESP_LOGE(TAG, "Error en esp_mesh_deinit: %s", esp_err_to_name(err));
+        return err;
+    }
+
+    err = esp_mesh_init();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Error en esp_mesh_init: %s", esp_err_to_name(err));
+        return err;
+    }
+
+    esp_mesh_fix_root(true);
+    esp_mesh_set_max_layer(6);
+    esp_mesh_disable_ps();
+    esp_mesh_set_ap_authmode(WIFI_AUTH_WPA2_PSK);
 
     if (activar_isla) {
         uint8_t canal = s_canal_conocido ? s_canal_conocido : 1;
@@ -86,8 +103,10 @@ static esp_err_t conmutar_malla(bool activar_isla)
         cfg.channel = canal;
         cfg.allow_channel_switch = false;
 
-        ESP_ERROR_CHECK(esp_mesh_set_type(MESH_ROOT));
-        ESP_ERROR_CHECK(esp_mesh_fix_root(true));
+        err = esp_mesh_set_type(MESH_ROOT);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Error en esp_mesh_set_type(MESH_ROOT): %s", esp_err_to_name(err));
+        }
     } else {
         s_isla_activa = false;
         s_salir_pendiente = false;
@@ -101,14 +120,21 @@ static esp_err_t conmutar_malla(bool activar_isla)
         cfg.channel = 0;
         cfg.allow_channel_switch = true;
 
-        ESP_ERROR_CHECK(esp_mesh_set_type(MESH_IDLE));
-        ESP_ERROR_CHECK(esp_mesh_fix_root(true));
+        err = esp_mesh_set_type(MESH_IDLE);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Error en esp_mesh_set_type(MESH_IDLE): %s", esp_err_to_name(err));
+        }
     }
 
-    ESP_ERROR_CHECK(esp_mesh_set_config(&cfg));
+    err = esp_mesh_set_config(&cfg);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Error en esp_mesh_set_config: %s", esp_err_to_name(err));
+        return err;
+    }
+
     err = esp_mesh_start();
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Error reiniciando malla: %s", esp_err_to_name(err));
+        ESP_LOGE(TAG, "Error en esp_mesh_start: %s", esp_err_to_name(err));
         return err;
     }
 
