@@ -15,17 +15,14 @@ static const char *TAG = "mesh_isla";
 static const char *NVS_NAMESPACE = "concentrador";
 static const char *NVS_KEY_CANAL = "canal";
 
-#define RTC_ISLA_MAGIC 0x49534C41u
-
-static RTC_NOINIT_ATTR uint32_t s_rtc_isla;
-static RTC_NOINIT_ATTR uint8_t s_rtc_canal_isla;
-
-static bool s_isla_activa = false;
+static volatile bool s_isla_activa = false;
+static volatile bool s_salir_pendiente = false;
 static uint8_t s_canal_isla = 0;
 static uint8_t s_canal_conocido = 0;
 static volatile TickType_t s_sin_padre_desde = 0;
 static uint8_t s_mesh_id[6] = {0};
 static TaskHandle_t s_tarea_handle = NULL;
+static mesh_isla_estado_cb_t s_estado_cb = NULL;
 
 static void canal_guardar(uint8_t canal)
 {
@@ -57,24 +54,86 @@ static void isla_buscar_gateway(bool todos_los_canales)
     }
 }
 
+static esp_err_t conmutar_malla(bool activar_isla)
+{
+    mesh_cfg_t cfg;
+    esp_err_t err = esp_mesh_get_config(&cfg);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "No se pudo leer config de malla: %s", esp_err_to_name(err));
+        return err;
+    }
+
+    ESP_LOGW(TAG, "Conmutando malla en caliente a %s...",
+             activar_isla ? "MODO ISLA (MESH_ROOT)" : "MODO NORMAL (MESH_IDLE)");
+
+    err = esp_mesh_stop();
+    if (err != ESP_OK && err != ESP_ERR_MESH_NOT_START) {
+        ESP_LOGE(TAG, "Error deteniendo malla: %s", esp_err_to_name(err));
+        return err;
+    }
+
+    if (activar_isla) {
+        uint8_t canal = s_canal_conocido ? s_canal_conocido : 1;
+        s_canal_isla = canal;
+        s_isla_activa = true;
+        s_salir_pendiente = false;
+        s_sin_padre_desde = 0;
+
+        const char *router = MESH_ROUTER_ISLA;
+        cfg.router.ssid_len = strlen(router);
+        memset(cfg.router.ssid, 0, sizeof(cfg.router.ssid));
+        memcpy(cfg.router.ssid, router, cfg.router.ssid_len);
+        cfg.channel = canal;
+        cfg.allow_channel_switch = false;
+
+        ESP_ERROR_CHECK(esp_mesh_set_type(MESH_ROOT));
+        ESP_ERROR_CHECK(esp_mesh_fix_root(true));
+    } else {
+        s_isla_activa = false;
+        s_salir_pendiente = false;
+        s_canal_isla = 0;
+        s_sin_padre_desde = xTaskGetTickCount() | 1;
+
+        const char *router = "aura-sin-router";
+        cfg.router.ssid_len = strlen(router);
+        memset(cfg.router.ssid, 0, sizeof(cfg.router.ssid));
+        memcpy(cfg.router.ssid, router, cfg.router.ssid_len);
+        cfg.channel = 0;
+        cfg.allow_channel_switch = true;
+
+        ESP_ERROR_CHECK(esp_mesh_set_type(MESH_IDLE));
+        ESP_ERROR_CHECK(esp_mesh_fix_root(true));
+    }
+
+    ESP_ERROR_CHECK(esp_mesh_set_config(&cfg));
+    err = esp_mesh_start();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Error reiniciando malla: %s", esp_err_to_name(err));
+        return err;
+    }
+
+    if (!activar_isla) {
+        esp_mesh_set_self_organized(true, true);
+    }
+
+    if (s_estado_cb) {
+        s_estado_cb(s_isla_activa, mesh_isla_get_canal());
+    }
+    return ESP_OK;
+}
+
 void mesh_isla_entrar(void)
 {
     uint8_t canal = s_canal_conocido ? s_canal_conocido : 1;
-    ESP_LOGW(TAG, "%d s sin raiz: me reinicio como raiz de la isla del aula (canal %u)",
+    ESP_LOGW(TAG, "%d s sin raiz: conmutando en caliente a MODO ISLA (canal %u)",
              MESH_ISLA_TRAS_S, canal);
-    s_rtc_isla = RTC_ISLA_MAGIC;
-    s_rtc_canal_isla = canal;
-    vTaskDelay(pdMS_TO_TICKS(200));
-    esp_restart();
+    conmutar_malla(true);
 }
 
 void mesh_isla_salir(void)
 {
-    ESP_LOGW(TAG, "Volvio el gateway: me reinicio en modo normal");
-    s_rtc_isla = 0;
-    s_rtc_canal_isla = 0;
-    vTaskDelay(pdMS_TO_TICKS(200));
-    esp_restart();
+    ESP_LOGW(TAG, "Volvio el gateway: solicitando retorno en caliente a modo normal");
+    s_salir_pendiente = true;
 }
 
 void mesh_isla_procesar_escaneo(int num_aps)
@@ -104,14 +163,25 @@ void mesh_isla_procesar_escaneo(int num_aps)
 static void tarea_monitoreo_isla(void *arg)
 {
     int vueltas = 0;
+    TickType_t ultimo_escaneo = 0;
     while (true) {
         if (s_isla_activa) {
-            vTaskDelay(pdMS_TO_TICKS(MESH_ISLA_REVISAR_S * 1000));
-            bool todos = (++vueltas * MESH_ISLA_REVISAR_S >= MESH_ISLA_REVISAR_TODO_S);
-            if (todos) {
+            if (s_salir_pendiente) {
+                conmutar_malla(false);
                 vueltas = 0;
+                ultimo_escaneo = 0;
+                continue;
             }
-            isla_buscar_gateway(todos);
+            TickType_t ahora = xTaskGetTickCount();
+            if (ultimo_escaneo == 0 || (ahora - ultimo_escaneo) >= pdMS_TO_TICKS(MESH_ISLA_REVISAR_S * 1000)) {
+                ultimo_escaneo = ahora;
+                bool todos = (++vueltas * MESH_ISLA_REVISAR_S >= MESH_ISLA_REVISAR_TODO_S);
+                if (todos) {
+                    vueltas = 0;
+                }
+                isla_buscar_gateway(todos);
+            }
+            vTaskDelay(pdMS_TO_TICKS(500));
         } else {
             vTaskDelay(pdMS_TO_TICKS(1000));
             TickType_t desde = s_sin_padre_desde;
@@ -137,18 +207,13 @@ esp_err_t mesh_isla_init(const uint8_t mesh_id[6])
         nvs_close(h);
     }
 
-    s_isla_activa = (s_rtc_isla == RTC_ISLA_MAGIC && s_rtc_canal_isla >= 1 && s_rtc_canal_isla <= 13);
-    if (s_isla_activa) {
-        s_canal_isla = s_rtc_canal_isla;
-        ESP_LOGW(TAG, "Iniciando en MODO ISLA (canal %u, sin gateway)", s_canal_isla);
-    } else {
-        s_rtc_isla = 0;
-        s_canal_isla = 0;
-        s_sin_padre_desde = xTaskGetTickCount() | 1;
-    }
+    s_isla_activa = false;
+    s_salir_pendiente = false;
+    s_canal_isla = 0;
+    s_sin_padre_desde = xTaskGetTickCount() | 1;
 
     if (s_tarea_handle == NULL) {
-        BaseType_t res = xTaskCreate(tarea_monitoreo_isla, "mesh_isla", 3072, NULL, 3, &s_tarea_handle);
+        BaseType_t res = xTaskCreate(tarea_monitoreo_isla, "mesh_isla", 4096, NULL, 3, &s_tarea_handle);
         if (res != pdPASS) {
             ESP_LOGE(TAG, "Error creando tarea de monitoreo de isla");
             return ESP_FAIL;
@@ -156,6 +221,11 @@ esp_err_t mesh_isla_init(const uint8_t mesh_id[6])
     }
 
     return ESP_OK;
+}
+
+void mesh_isla_set_estado_cb(mesh_isla_estado_cb_t cb)
+{
+    s_estado_cb = cb;
 }
 
 bool mesh_isla_esta_activa(void)
