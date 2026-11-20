@@ -217,6 +217,17 @@ typedef struct _objects_t {
     lv_obj_t *devices_header__header_mesh_badge;
     lv_obj_t *devices_header__header_mesh_dot;
     lv_obj_t *devices_header__header_mesh_lbl;
+    lv_obj_t *dev_infra_title;
+    lv_obj_t *dev_infra_card;
+    lv_obj_t *dev_gw_title;
+    lv_obj_t *dev_gw_mac;
+    lv_obj_t *dev_gw_badge;
+    lv_obj_t *dev_gw_badge_lbl;
+    lv_obj_t *dev_infra_div;
+    lv_obj_t *dev_cent_title;
+    lv_obj_t *dev_cent_mac;
+    lv_obj_t *dev_cent_badge;
+    lv_obj_t *dev_cent_badge_lbl;
     lv_obj_t *dev_sec_title;
     lv_obj_t *dev_sec_total;
     lv_obj_t *dev_empty_card;
