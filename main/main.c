@@ -147,6 +147,7 @@ static void tarea_demo_nodos(void *arg) {
 #endif
 
 static volatile bool s_eez_ui_sucio = true;
+static char s_gw_mac_str[32] = {0};
 static int s_ticker_idx = 0;
 static int s_dev_ticker_idx[4] = {0, 0, 0, 0};
 
@@ -761,7 +762,27 @@ static void refresco_eez_ui_timer_cb(lv_timer_t *t) {
   }
 
   char strip_buf[32];
-  // Pantalla Dispositivos
+  // Pantalla Dispositivos - Gateway
+  if (objects.dev_gw_mac && objects.dev_gw_badge && objects.dev_gw_badge_lbl) {
+    bool gw_ok = snap.red.gateway_conectado && !snap.red.modo_isla;
+    const char *gw_txt =
+        snap.red.modo_isla ? "MODO ISLA" : (gw_ok ? "CONECTADO" : "BUSCANDO");
+    aplicar_badge_estado(objects.dev_gw_badge, objects.dev_gw_badge_lbl, gw_ok,
+                         gw_txt);
+    char gw_info[64];
+    if (snap.red.modo_isla) {
+      snprintf(gw_info, sizeof(gw_info), "Deshabilitado - Canal %u",
+               (unsigned)snap.red.canal);
+    } else if (gw_ok && s_gw_mac_str[0] != '\0') {
+      snprintf(gw_info, sizeof(gw_info), "MAC: %s - Canal %u", s_gw_mac_str,
+               (unsigned)snap.red.canal);
+    } else {
+      strlcpy(gw_info, "Buscando nodo raiz...", sizeof(gw_info));
+    }
+    lv_label_set_text(objects.dev_gw_mac, gw_info);
+  }
+
+  // Pantalla Dispositivos - Nodos Hoja
   if (objects.dev_sec_total) {
     snprintf(strip_buf, sizeof(strip_buf), "%u Nodos Registrados",
              (unsigned)snap.cant_nodos);
@@ -986,6 +1007,10 @@ static void on_mesh_event(void *arg, esp_event_base_t base, int32_t id,
     }
   } else if (id == MESH_EVENT_PARENT_CONNECTED) {
     mesh_event_connected_t *c = (mesh_event_connected_t *)data;
+    snprintf(s_gw_mac_str, sizeof(s_gw_mac_str), "%02X:%02X:%02X:%02X:%02X:%02X",
+             c->connected.bssid[0], c->connected.bssid[1],
+             c->connected.bssid[2], c->connected.bssid[3],
+             c->connected.bssid[4], c->connected.bssid[5]);
     mesh_isla_notificar_padre_conectado(c->connected.channel);
     mesh_net_anunciar_aula();
     ui_bridge_actualizar_red(true, false, c->connected.channel,
@@ -997,6 +1022,7 @@ static void on_mesh_event(void *arg, esp_event_base_t base, int32_t id,
     mesh_event_root_address_t *r = (mesh_event_root_address_t *)data;
     mesh_hojas_set_raiz_mac(r->addr);
   } else if (id == MESH_EVENT_PARENT_DISCONNECTED) {
+    s_gw_mac_str[0] = '\0';
     mesh_isla_notificar_padre_desconectado();
     ui_bridge_actualizar_red(false, mesh_isla_esta_activa(), 0,
                              mesh_net_get_aula());
