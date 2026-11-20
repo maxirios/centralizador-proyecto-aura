@@ -596,7 +596,7 @@ static void refresco_eez_ui_timer_cb(lv_timer_t *t) {
 
   char mesh_txt[32];
   if (snap.red.modo_isla) {
-    snprintf(mesh_txt, sizeof(mesh_txt), "Isla (%u)", (unsigned)online_cnt);
+    strlcpy(mesh_txt, "Modo Isla", sizeof(mesh_txt));
   } else {
     snprintf(mesh_txt, sizeof(mesh_txt), "Mesh (%u)", (unsigned)online_cnt);
   }
@@ -998,8 +998,9 @@ static void on_mesh_event(void *arg, esp_event_base_t base, int32_t id,
       esp_mesh_set_self_organized(false, false);
     }
     mesh_net_anunciar_aula();
-    ui_bridge_actualizar_red(!mesh_isla_esta_activa(), mesh_isla_esta_activa(),
+    ui_bridge_actualizar_red(false, mesh_isla_esta_activa(),
                              mesh_isla_get_canal(), mesh_net_get_aula());
+    s_eez_ui_sucio = true;
   } else if (id == MESH_EVENT_SCAN_DONE) {
     if (mesh_isla_esta_activa()) {
       mesh_event_scan_done_t *s = (mesh_event_scan_done_t *)data;
@@ -1089,6 +1090,11 @@ static void procesar_comando_concentrador(const uint8_t de_mac[6],
   }
 }
 
+static void on_isla_estado_cambiado(bool activa, uint8_t canal) {
+  ui_bridge_actualizar_red(false, activa, canal, mesh_net_get_aula());
+  s_eez_ui_sucio = true;
+}
+
 void app_main(void) {
   ESP_ERROR_CHECK(nvs_flash_init());
   ESP_LOGI(TAG, "Protocolo AURA v%d cargado (cabecera %d B, payload max %d B)",
@@ -1104,6 +1110,7 @@ void app_main(void) {
   ESP_ERROR_CHECK(esp_wifi_start());
 
   ESP_ERROR_CHECK(mesh_isla_init(MESH_ID_AURA));
+  mesh_isla_set_estado_cb(on_isla_estado_cambiado);
 
   ESP_ERROR_CHECK(esp_mesh_init());
   ESP_ERROR_CHECK(esp_event_handler_register(MESH_EVENT, ESP_EVENT_ANY_ID,
