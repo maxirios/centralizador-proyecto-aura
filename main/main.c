@@ -762,7 +762,7 @@ static void refresco_eez_ui_timer_cb(lv_timer_t *t) {
   }
 
   char strip_buf[32];
-  // Pantalla Dispositivos - Infraestructura de Red
+  // Pantalla Dispositivos - Gateway
   if (objects.dev_gw_mac && objects.dev_gw_badge && objects.dev_gw_badge_lbl) {
     bool gw_ok = snap.red.gateway_conectado && !snap.red.modo_isla;
     const char *gw_txt =
@@ -771,34 +771,15 @@ static void refresco_eez_ui_timer_cb(lv_timer_t *t) {
                          gw_txt);
     char gw_info[64];
     if (snap.red.modo_isla) {
-      snprintf(gw_info, sizeof(gw_info), "Deshabilitado (Canal %u)",
+      snprintf(gw_info, sizeof(gw_info), "Deshabilitado - Canal %u",
                (unsigned)snap.red.canal);
     } else if (gw_ok && s_gw_mac_str[0] != '\0') {
-      snprintf(gw_info, sizeof(gw_info), "MAC: %s (Canal %u)", s_gw_mac_str,
+      snprintf(gw_info, sizeof(gw_info), "MAC: %s - Canal %u", s_gw_mac_str,
                (unsigned)snap.red.canal);
     } else {
       strlcpy(gw_info, "Buscando nodo raiz...", sizeof(gw_info));
     }
     lv_label_set_text(objects.dev_gw_mac, gw_info);
-  }
-  if (objects.dev_cent_mac && objects.dev_cent_badge &&
-      objects.dev_cent_badge_lbl) {
-    static char cent_mac_buf[48] = {0};
-    if (cent_mac_buf[0] == '\0') {
-      uint8_t mi_mac[6] = {0};
-      if (esp_read_mac(mi_mac, ESP_MAC_WIFI_STA) == ESP_OK) {
-        char hw_id[AURA_HW_ID_BYTES] = {0};
-        aura_hw_id_de_mac(mi_mac, hw_id);
-        snprintf(cent_mac_buf, sizeof(cent_mac_buf), "%02X:%02X:%02X:%02X:%02X:%02X (%s)",
-                 mi_mac[0], mi_mac[1], mi_mac[2], mi_mac[3], mi_mac[4],
-                 mi_mac[5], hw_id);
-      } else {
-        strlcpy(cent_mac_buf, "MAC: No disponible", sizeof(cent_mac_buf));
-      }
-    }
-    lv_label_set_text(objects.dev_cent_mac, cent_mac_buf);
-    aplicar_badge_estado(objects.dev_cent_badge, objects.dev_cent_badge_lbl,
-                         true, snap.red.modo_isla ? "MODO ISLA" : "ACTIVO");
   }
 
   // Pantalla Dispositivos - Nodos Hoja
