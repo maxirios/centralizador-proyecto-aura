@@ -1209,6 +1209,17 @@ void app_main(void) {
       if (v == AURA_TRAMA_OK) {
         const aura_trama_t *t = (const aura_trama_t *)rx_buf;
 
+        bool solo_raiz =
+            (t->tipo == AURA_TIPO_COMANDO ||
+             (t->tipo == AURA_TIPO_HORA && t->largo == sizeof(uint64_t)) ||
+             t->tipo == AURA_TIPO_EVENTO_OK ||
+             t->tipo == AURA_TIPO_REPORTAR);
+        if (solo_raiz && !mesh_hojas_es_raiz(from.addr)) {
+          ESP_LOGW(TAG, "Trama %s de " MACSTR " (no es la raiz): se descarta",
+                   aura_tipo_a_str(t->tipo), MAC2STR(from.addr));
+          continue;
+        }
+
         if (t->tipo == AURA_TIPO_HORA &&
             mesh_hora_procesar_trama(from.addr, t)) {
           continue;
