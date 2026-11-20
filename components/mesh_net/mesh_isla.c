@@ -1,4 +1,5 @@
 #include "mesh_isla.h"
+#include "aura_util.h"
 #include <string.h>
 #include "esp_log.h"
 #include "esp_wifi.h"
@@ -17,6 +18,7 @@ static const char *NVS_KEY_CANAL = "canal";
 
 static volatile bool s_isla_activa = false;
 static volatile bool s_salir_pendiente = false;
+static volatile bool s_gateway_visto_ie = false;
 static uint8_t s_canal_isla = 0;
 static uint8_t s_canal_conocido = 0;
 static volatile TickType_t s_sin_padre_desde = 0;
@@ -39,8 +41,24 @@ static void canal_guardar(uint8_t canal)
     }
 }
 
+static void isla_vendor_ie_cb(void *ctx, wifi_vendor_ie_type_t type,
+                               const uint8_t sa[6], const vendor_ie_data_t *ie, int rssi)
+{
+    if (!s_isla_activa || type != WIFI_VND_IE_TYPE_BEACON || ie == NULL) {
+        return;
+    }
+    if (ie->length >= 4 &&
+        ie->vendor_oui[0] == AURA_OUI_0 &&
+        ie->vendor_oui[1] == AURA_OUI_1 &&
+        ie->vendor_oui[2] == AURA_OUI_2 &&
+        ie->vendor_oui_type == AURA_IE_GATEWAY) {
+        s_gateway_visto_ie = true;
+    }
+}
+
 static void isla_buscar_gateway(bool todos_los_canales)
 {
+    s_gateway_visto_ie = false;
     wifi_scan_config_t sc = {
         .show_hidden = true,
         .scan_type = WIFI_SCAN_TYPE_PASSIVE,
@@ -56,12 +74,14 @@ static void isla_buscar_gateway(bool todos_los_canales)
 
 static esp_err_t conmutar_malla(bool activar_isla)
 {
-    mesh_cfg_t cfg;
+    mesh_cfg_t cfg = MESH_INIT_CONFIG_DEFAULT();
     esp_err_t err = esp_mesh_get_config(&cfg);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "No se pudo leer config de malla: %s", esp_err_to_name(err));
         return err;
     }
+    memcpy(cfg.mesh_id.addr, s_mesh_id, 6);
+    cfg.crypto_funcs = &g_wifi_default_mesh_crypto_funcs;
 
     ESP_LOGW(TAG, "Conmutando malla en caliente a %s...",
              activar_isla ? "MODO ISLA (MESH_ROOT)" : "MODO NORMAL (MESH_IDLE)");
@@ -138,10 +158,6 @@ static esp_err_t conmutar_malla(bool activar_isla)
         return err;
     }
 
-    if (!activar_isla) {
-        esp_mesh_set_self_organized(true, true);
-    }
-
     if (s_estado_cb) {
         s_estado_cb(s_isla_activa, mesh_isla_get_canal());
     }
@@ -167,21 +183,22 @@ void mesh_isla_procesar_escaneo(int num_aps)
     if (!s_isla_activa) {
         return;
     }
-    mesh_assoc_t assoc;
-    wifi_ap_record_t rec;
-    int ie_len = 0;
-    bool gateway = false;
-    for (int i = 0; i < num_aps; i++) {
-        esp_mesh_scan_get_ap_ie_len(&ie_len);
-        esp_mesh_scan_get_ap_record(&rec, &assoc);
-        if (ie_len == sizeof(assoc) && assoc.layer == 1 && memcmp(assoc.mesh_id, s_mesh_id, 6) == 0) {
-            ESP_LOGI(TAG, "Isla: detectada raiz de la malla en " MACSTR " (canal %d)",
-                     MAC2STR(rec.bssid), rec.primary);
-            gateway = true;
+    bool gateway = s_gateway_visto_ie;
+    if (!gateway) {
+        mesh_assoc_t assoc;
+        wifi_ap_record_t rec;
+        int ie_len = 0;
+        for (int i = 0; i < num_aps; i++) {
+            esp_mesh_scan_get_ap_ie_len(&ie_len);
+            esp_mesh_scan_get_ap_record(&rec, &assoc);
+            if (ie_len == sizeof(assoc) && assoc.layer == 1 && memcmp(assoc.mesh_id, s_mesh_id, 6) == 0) {
+                gateway = true;
+            }
         }
     }
     esp_mesh_flush_scan_result();
     if (gateway) {
+        ESP_LOGI(TAG, "Isla: Gateway AURA detectado en escaneo, volviendo a modo normal");
         mesh_isla_salir();
     }
 }
@@ -235,8 +252,11 @@ esp_err_t mesh_isla_init(const uint8_t mesh_id[6])
 
     s_isla_activa = false;
     s_salir_pendiente = false;
+    s_gateway_visto_ie = false;
     s_canal_isla = 0;
     s_sin_padre_desde = xTaskGetTickCount() | 1;
+
+    esp_wifi_set_vendor_ie_cb(isla_vendor_ie_cb, NULL);
 
     if (s_tarea_handle == NULL) {
         BaseType_t res = xTaskCreate(tarea_monitoreo_isla, "mesh_isla", 4096, NULL, 3, &s_tarea_handle);

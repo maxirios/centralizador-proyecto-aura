@@ -16,6 +16,7 @@
 #define AURA_OUI_1              0xA5
 #define AURA_OUI_2              0x52
 #define AURA_IE_CONCENTRADOR    0x01
+#define AURA_IE_GATEWAY         0x02
 
 /* ===== Aula ===== */
 /* Nombre corto en minúsculas: a-z, 0-9, "-" y "_", de 1 a 15 caracteres. */
