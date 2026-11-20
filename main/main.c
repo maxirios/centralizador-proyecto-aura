@@ -955,7 +955,6 @@ static void tarea_boton_local(void *arg) {
 
 static void on_mesh_event(void *arg, esp_event_base_t base, int32_t id,
                           void *data) {
-  esp_wifi_disable_pmf_config(WIFI_IF_AP);
   if (id == MESH_EVENT_STARTED) {
     esp_wifi_disable_pmf_config(WIFI_IF_AP);
     if (mesh_isla_esta_activa()) {
