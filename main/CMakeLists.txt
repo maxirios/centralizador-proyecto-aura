@@ -23,4 +23,5 @@ idf_component_register(
         ui
         lvgl
         esp_lvgl_port
+        cjson
 )
