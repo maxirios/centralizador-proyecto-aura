@@ -912,6 +912,22 @@ static void refresco_eez_ui_timer_cb(lv_timer_t *t) {
              (unsigned)snap.red.canal);
     lv_label_set_text(objects.cfg_val_chan, ch_buf);
   }
+  if (objects.cfg_val_mac) {
+    static char mac_buf[48] = {0};
+    if (mac_buf[0] == '\0') {
+      uint8_t mi_mac[6] = {0};
+      if (esp_read_mac(mi_mac, ESP_MAC_WIFI_STA) == ESP_OK) {
+        char hw_id[AURA_HW_ID_BYTES] = {0};
+        aura_hw_id_de_mac(mi_mac, hw_id);
+        snprintf(mac_buf, sizeof(mac_buf), "%02X:%02X:%02X:%02X:%02X:%02X (%s)",
+                 mi_mac[0], mi_mac[1], mi_mac[2], mi_mac[3], mi_mac[4],
+                 mi_mac[5], hw_id);
+      } else {
+        strlcpy(mac_buf, "No disponible", sizeof(mac_buf));
+      }
+    }
+    lv_label_set_text(objects.cfg_val_mac, mac_buf);
+  }
   if (objects.cfg_gw_badge && objects.cfg_gw_badge_lbl) {
     bool gw_ok = snap.red.gateway_conectado && !snap.red.modo_isla;
     const char *gw_txt =
