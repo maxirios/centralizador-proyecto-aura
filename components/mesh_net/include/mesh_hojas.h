@@ -40,6 +40,12 @@ esp_err_t mesh_hojas_init(const char *aula, mesh_hoja_evento_cb_t evento_cb, mes
 // Actualiza el aula de operacion y recarga la lista de hojas correspondientes
 void mesh_hojas_set_aula(const char *nueva_aula);
 
+// Registra la MAC SoftAP de la raiz (Gateway) para excluirla del listado de hojas
+void mesh_hojas_set_raiz_mac(const uint8_t root_ap_mac[6]);
+
+// Retorna true si la MAC corresponde a la raiz conocida (STA o SoftAP)
+bool mesh_hojas_es_raiz(const uint8_t mac[6]);
+
 // Notifica asociacion o desasociacion de una estacion en la malla
 void mesh_hojas_notificar_child_connected(const uint8_t mac[6]);
 void mesh_hojas_notificar_child_disconnected(const uint8_t mac[6]);

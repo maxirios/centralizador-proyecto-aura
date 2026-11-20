@@ -23,6 +23,9 @@ static mesh_hoja_evento_cb_t s_evento_cb = NULL;
 static mesh_hoja_telemetria_cb_t s_telemetria_cb = NULL;
 static uint8_t s_ultima_mac[6] = {0};
 static bool s_hay_ultima = false;
+static uint8_t s_raiz_ap[6] = {0};
+static uint8_t s_raiz_sta[6] = {0};
+static bool s_hay_raiz = false;
 
 static void hojas_guardar_nvs(void)
 {
@@ -78,6 +81,9 @@ static void hojas_cargar_nvs(void)
 
 static mesh_hoja_info_t *hoja_buscar_o_crear(const uint8_t mac[6])
 {
+    if (mesh_hojas_es_raiz(mac)) {
+        return NULL;
+    }
     uint8_t mi_mac[6];
     if (esp_read_mac(mi_mac, ESP_MAC_WIFI_STA) == ESP_OK && memcmp(mac, mi_mac, 6) == 0) {
         return NULL;
@@ -211,6 +217,50 @@ void mesh_hojas_set_aula(const char *nueva_aula)
     s_cant_hojas = 0;
     hojas_guardar_nvs();
     xSemaphoreGive(s_lock);
+}
+
+bool mesh_hojas_es_raiz(const uint8_t mac[6])
+{
+    if (!mac || !s_hay_raiz) {
+        return false;
+    }
+    return (memcmp(mac, s_raiz_sta, 6) == 0 || memcmp(mac, s_raiz_ap, 6) == 0);
+}
+
+void mesh_hojas_set_raiz_mac(const uint8_t root_ap_mac[6])
+{
+    if (!root_ap_mac) {
+        return;
+    }
+    uint8_t sta[6];
+    memcpy(sta, root_ap_mac, 6);
+    for (int i = 5; i >= 0 && sta[i]-- == 0; i--) {
+    }
+    memcpy(s_raiz_ap, root_ap_mac, 6);
+    memcpy(s_raiz_sta, sta, 6);
+    s_hay_raiz = true;
+
+    if (s_lock && xSemaphoreTake(s_lock, pdMS_TO_TICKS(50)) == pdTRUE) {
+        bool purgado = false;
+        for (int i = 0; i < s_cant_hojas; ) {
+            if (mesh_hojas_es_raiz(s_hojas[i].mac)) {
+                memmove(&s_hojas[i], &s_hojas[i + 1],
+                        (size_t)(s_cant_hojas - i - 1) * sizeof(mesh_hoja_info_t));
+                s_cant_hojas--;
+                purgado = true;
+            } else {
+                i++;
+            }
+        }
+        if (s_hay_ultima && mesh_hojas_es_raiz(s_ultima_mac)) {
+            s_hay_ultima = false;
+        }
+        if (purgado) {
+            hojas_guardar_nvs();
+            ESP_LOGI(TAG, "MAC de raiz purgada de lista de hojas");
+        }
+        xSemaphoreGive(s_lock);
+    }
 }
 
 void mesh_hojas_notificar_child_connected(const uint8_t mac[6])

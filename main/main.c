@@ -955,7 +955,6 @@ static void tarea_boton_local(void *arg) {
 
 static void on_mesh_event(void *arg, esp_event_base_t base, int32_t id,
                           void *data) {
-  esp_wifi_disable_pmf_config(WIFI_IF_AP);
   if (id == MESH_EVENT_STARTED) {
     esp_wifi_disable_pmf_config(WIFI_IF_AP);
     if (mesh_isla_esta_activa()) {
@@ -978,6 +977,9 @@ static void on_mesh_event(void *arg, esp_event_base_t base, int32_t id,
     if (!esp_mesh_is_root()) {
       mesh_hora_pedir_sincronizacion();
     }
+  } else if (id == MESH_EVENT_ROOT_ADDRESS) {
+    mesh_event_root_address_t *r = (mesh_event_root_address_t *)data;
+    mesh_hojas_set_raiz_mac(r->addr);
   } else if (id == MESH_EVENT_PARENT_DISCONNECTED) {
     mesh_isla_notificar_padre_desconectado();
     ui_bridge_actualizar_red(false, mesh_isla_esta_activa(), 0,
@@ -1163,6 +1165,10 @@ void app_main(void) {
 
         if (t->tipo == AURA_TIPO_COMANDO) {
           procesar_comando_concentrador(from.addr, t);
+          continue;
+        }
+
+        if (t->tipo == AURA_TIPO_EVENTO_OK || mesh_hojas_es_raiz(from.addr)) {
           continue;
         }
 
