@@ -351,6 +351,9 @@ typedef struct _objects_t {
     lv_obj_t *cfg_gw_mac;
     lv_obj_t *cfg_gw_badge;
     lv_obj_t *cfg_gw_badge_lbl;
+    lv_obj_t *cfg_lbl_mac;
+    lv_obj_t *cfg_box_mac;
+    lv_obj_t *cfg_val_mac;
     lv_obj_t *config_bottom_nav;
     lv_obj_t *config_bottom_nav__bottom_nav_root;
     lv_obj_t *config_bottom_nav__nav_top_line;

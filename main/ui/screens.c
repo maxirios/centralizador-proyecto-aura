@@ -1751,7 +1751,7 @@ void create_screen_config() {
             lv_obj_t *obj = lv_obj_create(parent_obj);
             objects.cfg_card_main = obj;
             lv_obj_set_pos(obj, 16, 92);
-            lv_obj_set_size(obj, 448, 396);
+            lv_obj_set_size(obj, 448, 484);
             lv_obj_remove_flag(obj, LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
             add_style_panel_card(obj);
             {
@@ -1938,6 +1938,38 @@ void create_screen_config() {
                         }
                     }
                 }
+                {
+                    // cfg_lbl_mac
+                    lv_obj_t *obj = lv_label_create(parent_obj);
+                    objects.cfg_lbl_mac = obj;
+                    lv_obj_set_pos(obj, 20, 388);
+                    lv_obj_set_size(obj, 408, 16);
+                    lv_obj_remove_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_GESTURE_BUBBLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
+                    add_style_label_section_title(obj);
+                    lv_label_set_text_static(obj, "DIRECCION MAC DEL CENTRALIZADOR");
+                }
+                {
+                    // cfg_box_mac
+                    lv_obj_t *obj = lv_obj_create(parent_obj);
+                    objects.cfg_box_mac = obj;
+                    lv_obj_set_pos(obj, 20, 412);
+                    lv_obj_set_size(obj, 408, 44);
+                    lv_obj_remove_flag(obj, LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
+                    add_style_panel_input_box(obj);
+                    {
+                        lv_obj_t *parent_obj = obj;
+                        {
+                            // cfg_val_mac
+                            lv_obj_t *obj = lv_label_create(parent_obj);
+                            objects.cfg_val_mac = obj;
+                            lv_obj_set_pos(obj, 14, 13);
+                            lv_obj_set_size(obj, 380, 18);
+                            lv_obj_remove_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_GESTURE_BUBBLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
+                            add_style_label_body(obj);
+                            lv_label_set_text_static(obj, "--:--:--:--:--:--");
+                        }
+                    }
+                }
             }
         }
         {
@@ -1952,7 +1984,7 @@ void create_screen_config() {
             lv_obj_set_style_pad_bottom(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
             lv_obj_set_style_bg_opa(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
             lv_obj_set_style_border_width(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-            create_user_widget_bottom_nav(obj, 332);
+            create_user_widget_bottom_nav(obj, 335);
         }
         {
             // cfg_nav_active_bar
@@ -1970,7 +2002,7 @@ void create_screen_config() {
 
 void tick_screen_config() {
     tick_user_widget_header_bar(305);
-    tick_user_widget_bottom_nav(332);
+    tick_user_widget_bottom_nav(335);
 }
 
 void create_screen_about() {
@@ -1993,7 +2025,7 @@ void create_screen_about() {
             lv_obj_set_style_pad_bottom(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
             lv_obj_set_style_bg_opa(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
             lv_obj_set_style_border_width(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-            create_user_widget_header_bar(obj, 348);
+            create_user_widget_header_bar(obj, 351);
         }
         {
             // about_card_hero
@@ -2174,7 +2206,7 @@ void create_screen_about() {
             lv_obj_set_style_pad_bottom(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
             lv_obj_set_style_bg_opa(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
             lv_obj_set_style_border_width(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-            create_user_widget_bottom_nav(obj, 372);
+            create_user_widget_bottom_nav(obj, 375);
         }
         {
             // about_nav_active_bar
@@ -2191,8 +2223,8 @@ void create_screen_about() {
 }
 
 void tick_screen_about() {
-    tick_user_widget_header_bar(348);
-    tick_user_widget_bottom_nav(372);
+    tick_user_widget_header_bar(351);
+    tick_user_widget_bottom_nav(375);
 }
 
 void create_user_widget_header_bar(lv_obj_t *parent_obj, int startWidgetIndex) {
