@@ -9,6 +9,9 @@ sdkconfig.*
 # Local configuration overrides (.local, .esp32s3, .esp32c6, etc.)
 sdkconfig.defaults.*
 
+# ID y clave de la mesh (plantilla versionada: main/config_local.ejemplo.h)
+config_local.h
+
 # Component manager
 dependencies.lock
 managed_components/
