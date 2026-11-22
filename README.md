@@ -30,11 +30,20 @@ idf.py set-target esp32s3
 
 El centralizador se conecta a la malla mediante credenciales compartidas con el Gateway y las Hojas:
 
-- **ID de la Malla (MESH_ID):** 6 bytes hexadecimales que identifican la red local.
-- **Contraseña del AP Mesh (MESH_AP_PASS):** Clave WPA2 utilizada para la comunicación inter-nodo.
-- **Aula asignada:** Identificador de aula para filtrar hojas (ej. `aula1`).
+- **ID de la Malla (`MESH_ID_BYTES`):** 6 bytes hexadecimales que identifican la red local.
+- **Contraseña del AP Mesh (`MESH_AP_PASS`):** Clave WPA2 (mínimo 8 caracteres) utilizada para la comunicación inter-nodo.
 
-Estos parámetros se configuran de forma segura mediante `main/config_local.h` o interactivamente:
+Estos dos valores van en `main/config_local.h`, que **no se sube a Git**. Copia la plantilla y complétala con los **mismos** valores que el Gateway y las Hojas:
+
+```bash
+cp main/config_local.ejemplo.h main/config_local.h
+```
+
+Sin ese archivo el build se detiene con un error que indica cómo crearlo.
+
+El **aula** no se configura acá: la asigna el Gateway (`set_config {"aula": ...}`) y queda guardada en NVS.
+
+Los relés locales se configuran interactivamente:
 
 ```bash
 idf.py menuconfig

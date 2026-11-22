@@ -29,7 +29,7 @@ Este repositorio contiene el firmware del **Centralizador** del Proyecto Aura: u
 
 ## Reglas Críticas de Arquitectura y Seguridad
 1. **Configuración inmutable a mano:** Nunca edites `sdkconfig` directamente. Todo cambio persistente va en `sdkconfig.defaults`.
-2. **Secretos fuera de Git:** Parámetros sensibles de red Wi-Fi van en `sdkconfig.defaults.local` (en `.gitignore`).
+2. **Secretos fuera de Git:** El ID y la clave de la mesh van en `main/config_local.h` (en `.gitignore`); en el repo solo va la plantilla `main/config_local.ejemplo.h`. Nunca escribirlos en el código.
 3. **Memoria de renderizado:** Alojar los framebuffers y buffers de renderizado de LVGL v9 en **PSRAM** (`MALLOC_CAP_SPIRAM`) para no agotar la RAM interna.
 4. **Concurrencia FreeRTOS + LVGL:** La rutina `lv_timer_handler()` corre en una tarea FreeRTOS dedicada; toda llamada que interactúe con la UI debe usar los bloqueos de `esp_lvgl_port_lock()` / `esp_lvgl_port_unlock()`.
 5. **Modularidad en `components/`:** El código de drivers, lógica de red y pantallas debe desacoplarse en componentes locales (`components/bsp_display`, `components/mesh_net`, `components/ui`).

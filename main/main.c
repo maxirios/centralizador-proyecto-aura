@@ -29,9 +29,16 @@
 #include <stdio.h>
 #include <string.h>
 
+// ID y clave de la mesh fuera de Git: copiar config_local.ejemplo.h como config_local.h
+#if __has_include("config_local.h")
+#include "config_local.h"
+#else
+#error "Falta main/config_local.h: copiar main/config_local.ejemplo.h y completar MESH_ID_BYTES y MESH_AP_PASS"
+#endif
+
 #define PIN_BOTON GPIO_NUM_0
 
-static const uint8_t MESH_ID_AURA[6] = {0x41, 0x55, 0x52, 0x41, 0x00, 0x01};
+static const uint8_t MESH_ID_AURA[6] = {MESH_ID_BYTES};
 
 static const char *TAG = "mesh";
 
@@ -1168,7 +1175,7 @@ void app_main(void) {
   cfg.allow_channel_switch = !mesh_isla_esta_activa();
   cfg.mesh_ap.max_connection = 4;
   cfg.mesh_ap.nonmesh_max_connection = 0;
-  memcpy(cfg.mesh_ap.password, "mesh123ota", strlen("mesh123ota"));
+  memcpy(cfg.mesh_ap.password, MESH_AP_PASS, strlen(MESH_AP_PASS));
 
   if (mesh_isla_esta_activa()) {
     ESP_ERROR_CHECK(esp_mesh_set_type(MESH_ROOT));
